@@ -1,8 +1,8 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Task, FollowUp, Status, Priority, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
 import { INITIAL_TASKS, INITIAL_FOLLOW_UPS, INITIAL_ORG_DATA, INITIAL_USER_PROFILE } from './constants';
+import { apiFetch } from './services/api';
 import { FollowUpCard } from './components/FollowUpCard';
 import { TaskList } from './components/TaskList';
 import { OrgChart } from './components/OrgChart';
@@ -19,14 +19,6 @@ const STORAGE_KEYS = {
   ACTIVE_USER_EMAIL: 'biztrack_active_email',
   VIEW: 'biztrack_current_view'
 };
-
-// Fix: Cast import.meta to any to resolve TypeScript error about missing 'env' property.
-// This is a workaround for when type definitions for build-tool specific environment variables are not available.
-const BACKEND_URL = typeof (import.meta as any).env?.BACKEND_URL !== 'undefined'
-  ? (import.meta as any).env.BACKEND_URL
-  : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? 'http://localhost:5000'
-      : '');
 
 const ORG_LEVELS: OrgLevel[] = [
   'SUPERVISOR', 'WORLD_TEAM', 'ACTIVE_WORLD_TEAM', 'GET', 'GET_2500', 
@@ -78,24 +70,6 @@ const App: React.FC = () => {
     nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
   });
 
-  const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-    const headers = {
-      'Content-Type': 'application/json',
-      'x-user-email': currentUser.email,
-      ...(options.headers || {})
-    };
-    const baseUrl = BACKEND_URL || '';
-    try {
-      const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
-      if (!response.ok) throw new Error('API request failed');
-      if (response.status === 204) return null;
-      return response.json();
-    } catch (err) {
-      console.warn(`Backend connectivity issue:`, err);
-      throw err;
-    }
-  };
-
   const buildOrgTree = (members: any[]): OrgNode | null => {
     if (!members || members.length === 0) return null;
     const idMap: Record<string, OrgNode> = {};
@@ -119,7 +93,7 @@ const App: React.FC = () => {
 
   const refreshOrgData = async () => {
     try {
-      const remoteOrg = await apiFetch('/api/org');
+      const remoteOrg = await apiFetch('/api/org', currentUser.email);
       setOrgData(buildOrgTree(remoteOrg));
     } catch (err) {
       setOrgData(INITIAL_ORG_DATA);
@@ -130,9 +104,9 @@ const App: React.FC = () => {
     setIsLoading(true);
     try {
       const [remoteTasks, remoteFollowUps, remoteOrg] = await Promise.all([
-        apiFetch('/api/tasks'),
-        apiFetch('/api/followups'),
-        apiFetch('/api/org')
+        apiFetch('/api/tasks', currentUser.email),
+        apiFetch('/api/followups', currentUser.email),
+        apiFetch('/api/org', currentUser.email)
       ]);
       setTasks(remoteTasks.map((t: any) => ({ ...t, id: t._id || t.id })));
       setFollowUps(remoteFollowUps.map((f: any) => ({ ...f, id: f._id || f.id })));
@@ -158,7 +132,7 @@ const App: React.FC = () => {
   const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
     try {
       if (isBackendLive) {
-        const saved = await apiFetch('/api/tasks', { method: 'POST', body: JSON.stringify(newTask) });
+        const saved = await apiFetch('/api/tasks', currentUser.email, { method: 'POST', body: JSON.stringify(newTask) });
         if (saved) setTasks(prev => [{ ...saved, id: saved._id || saved.id }, ...prev]);
       } else {
         setTasks(prev => [{ ...newTask, id: Date.now().toString() }, ...prev]);
@@ -171,7 +145,7 @@ const App: React.FC = () => {
   const handleDeleteTask = async (id: string) => {
     try {
       if (isBackendLive) {
-        await apiFetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/tasks/${id}`, currentUser.email, { method: 'DELETE' });
       }
       setTasks(prev => prev.filter(t => t.id !== id));
     } catch (err) {
@@ -186,7 +160,7 @@ const App: React.FC = () => {
     
     try {
       if (isBackendLive) {
-        const updated = await apiFetch(`/api/tasks/${id}`, {
+        const updated = await apiFetch(`/api/tasks/${id}`, currentUser.email, {
           method: 'PATCH',
           body: JSON.stringify({ status: newStatus })
         });
@@ -205,7 +179,7 @@ const App: React.FC = () => {
   const handleFollowUpStatusChange = async (id: string, status: Status) => {
     try {
       if (isBackendLive) {
-        const updated = await apiFetch(`/api/followups/${id}`, {
+        const updated = await apiFetch(`/api/followups/${id}`, currentUser.email, {
           method: 'PATCH',
           body: JSON.stringify({ status })
         });
@@ -230,7 +204,7 @@ const App: React.FC = () => {
     };
     try {
       if (isBackendLive) {
-        const updated = await apiFetch(`/api/followups/${id}`, {
+        const updated = await apiFetch(`/api/followups/${id}`, currentUser.email, {
           method: 'PATCH',
           body: JSON.stringify(updates)
         });
@@ -248,7 +222,7 @@ const App: React.FC = () => {
   const handleDeleteFollowUp = async (id: string) => {
     try {
       if (isBackendLive) {
-        await apiFetch(`/api/followups/${id}`, { method: 'DELETE' });
+        await apiFetch(`/api/followups/${id}`, currentUser.email, { method: 'DELETE' });
       }
       setFollowUps(prev => prev.filter(f => f.id !== id));
     } catch (err) {
@@ -261,7 +235,7 @@ const App: React.FC = () => {
     const followUpData = { ...newFollowUp, id: Date.now().toString(), lastContactDate: new Date().toISOString().split('T')[0] } as FollowUp;
     try {
       if (isBackendLive) {
-        const saved = await apiFetch('/api/followups', { method: 'POST', body: JSON.stringify(newFollowUp) });
+        const saved = await apiFetch('/api/followups', currentUser.email, { method: 'POST', body: JSON.stringify(newFollowUp) });
         if (saved) setFollowUps(prev => [{ ...saved, id: saved._id || saved.id }, ...prev]);
       } else {
         setFollowUps(prev => [followUpData, ...prev]);
@@ -292,12 +266,12 @@ const App: React.FC = () => {
     if (!memberForm.name || !memberForm.role) return;
     try {
       if (editingMember) {
-        await apiFetch(`/api/org/${editingMember.id}`, {
+        await apiFetch(`/api/org/${editingMember.id}`, currentUser.email, {
           method: 'PATCH',
           body: JSON.stringify(memberForm)
         });
       } else {
-        await apiFetch('/api/org', {
+        await apiFetch('/api/org', currentUser.email, {
           method: 'POST',
           body: JSON.stringify({ ...memberForm, parentId: memberParentId })
         });
@@ -312,7 +286,7 @@ const App: React.FC = () => {
   const handleDeleteMember = async (nodeId: string) => {
     if (!window.confirm("Are you sure?")) return;
     try {
-      await apiFetch(`/api/org/${nodeId}`, { method: 'DELETE' });
+      await apiFetch(`/api/org/${nodeId}`, currentUser.email, { method: 'DELETE' });
       await refreshOrgData();
     } catch (err) {
       alert("Delete failed.");
