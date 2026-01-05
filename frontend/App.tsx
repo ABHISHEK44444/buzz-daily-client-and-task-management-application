@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Task, FollowUp, Status, Priority, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
 import { INITIAL_TASKS, INITIAL_FOLLOW_UPS, INITIAL_ORG_DATA, INITIAL_USER_PROFILE } from './constants';
@@ -19,10 +20,12 @@ const STORAGE_KEYS = {
   VIEW: 'biztrack_current_view'
 };
 
-const BACKEND_URL = (typeof process !== 'undefined' && process.env?.BACKEND_URL) 
-  ? process.env.BACKEND_URL 
+// Fix: Cast import.meta to any to resolve TypeScript error about missing 'env' property.
+// This is a workaround for when type definitions for build-tool specific environment variables are not available.
+const BACKEND_URL = typeof (import.meta as any).env?.BACKEND_URL !== 'undefined'
+  ? (import.meta as any).env.BACKEND_URL
   : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? 'http://localhost:5000' 
+      ? 'http://localhost:5000'
       : '');
 
 const ORG_LEVELS: OrgLevel[] = [
