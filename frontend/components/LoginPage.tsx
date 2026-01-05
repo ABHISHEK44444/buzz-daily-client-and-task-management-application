@@ -92,7 +92,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const inputClasses = "appearance-none block w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-accent focus:border-accent sm:text-sm transition-all";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col py-12 sm:px-6 lg:px-8 font-sans animate-fade-in">
+    <div className="min-h-screen bg-slate-50 py-12 sm:px-6 lg:px-8 font-sans animate-fade-in">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center items-center gap-3">
             <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-accent shadow-xl shadow-blue-500/10">
