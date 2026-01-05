@@ -1,0 +1,36 @@
+
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IFollowUp extends Document {
+  userId: mongoose.Types.ObjectId;
+  clientName: string;
+  company: string;
+  mobile: string;
+  email: string;
+  clientType: 'Prospect' | 'User' | 'Associate';
+  frequency: 'Daily' | 'Weekly' | 'Every 2 Weeks' | 'Monthly';
+  priority: 'High' | 'Medium' | 'Low';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Archived';
+  lastContactDate: Date;
+  nextFollowUpDate: Date;
+  notes: string;
+  avatarUrl?: string;
+}
+
+const FollowUpSchema: Schema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  clientName: { type: String, required: true },
+  company: { type: String },
+  mobile: { type: String, required: true },
+  email: { type: String },
+  clientType: { type: String, enum: ['Prospect', 'User', 'Associate'], default: 'Prospect' },
+  frequency: { type: String, enum: ['Daily', 'Weekly', 'Every 2 Weeks', 'Monthly'], default: 'Weekly' },
+  priority: { type: String, enum: ['High', 'Medium', 'Low'], default: 'Medium' },
+  status: { type: String, enum: ['Pending', 'In Progress', 'Completed', 'Archived'], default: 'Pending' },
+  lastContactDate: { type: Date },
+  nextFollowUpDate: { type: Date, required: true },
+  notes: { type: String },
+  avatarUrl: { type: String },
+}, { timestamps: true });
+
+export default mongoose.model<IFollowUp>('FollowUp', FollowUpSchema);
