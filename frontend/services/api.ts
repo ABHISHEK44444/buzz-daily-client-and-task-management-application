@@ -1,25 +1,23 @@
 
+// --- IMPORTANT ---
+// PASTE YOUR FULL RENDER BACKEND URL HERE.
+// Example: 'https://your-backend-name.onrender.com'
+// Make sure there is NO trailing slash (/) at the end.
+const BACKEND_URL = 'https://buzz-daily-client-and-task-management.onrender.com'; // <-- PASTE YOUR RENDER URL HERE
+
 const getApiUrl = () => {
-  // Safe access for Vite environment variables
-  const env = (import.meta as any).env || {};
-  
-  // 1. Prioritize the VITE_API_URL environment variable (for Vercel/production)
-  let url = env.VITE_API_URL;
-
-  // 2. If not set, check if we are in a local development environment
-  if (!url && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    url = 'http://localhost:5000';
-  }
-
-  // 3. Fallback to an empty string for same-origin requests if all else fails
-  url = url || '';
-
-  // 4. Remove trailing slash to prevent double-slash issues
-  if (url.endsWith('/')) {
-    url = url.slice(0, -1);
+  // Prioritize the hardcoded backend URL.
+  if (BACKEND_URL) {
+    return BACKEND_URL;
   }
   
-  return url;
+  // Fallback to localhost for local development if the hardcoded URL is not set.
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+
+  // If deployed without setting the URL, it will attempt same-origin requests.
+  return ''; 
 };
 
 export const apiFetch = async (endpoint: string, userEmail: string, options: RequestInit = {}) => {
