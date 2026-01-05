@@ -1,6 +1,6 @@
 
-const BACKEND_URL = typeof (import.meta as any).env?.BACKEND_URL !== 'undefined'
-  ? (import.meta as any).env.BACKEND_URL
+const BACKEND_URL = typeof (import.meta as any).env?.VITE_API_KEY !== 'undefined'
+  ? (import.meta as any).env.VITE_API_KEY
   : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? 'http://localhost:5000'
       : '');
