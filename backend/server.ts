@@ -3,8 +3,10 @@
 
 
 
-// FIX: Aliased Request and Response to avoid conflict with global DOM types.
-import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
+
+// FIX: Alias Request and Response types from express to resolve conflicts with global DOM types.
+// FIX: Changed express import to a namespace import to resolve type conflicts.
+import * as express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -23,7 +25,7 @@ if (!MONGO_URI) {
   process.exit(1); // Exit with failure code
 }
 
-const app = express();
+const app = express.default();
 const PORT = process.env.PORT || 5000;
 
 // --- Middleware ---
@@ -63,14 +65,14 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.default().json({ limit: '10mb' }));
 
 // --- API ROUTES DEFINITION ---
 // We define routes before starting the server.
 
 // Middleware to find/create user based on email header
-// FIX: Use aliased Express types for request, response, and next function.
-const getUser = async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+// FIX: Use namespaced express types to avoid conflicts.
+const getUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const customReq = req as any;
   const email = customReq.headers['x-user-email'];
   if (!email) return res.status(401).json({ error: 'User email required' });
@@ -97,8 +99,8 @@ const getUser = async (req: ExpressRequest, res: ExpressResponse, next: NextFunc
 };
 
 // User Profile API
-// FIX: Use aliased Express types for request and response.
-app.patch('/api/user', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.patch('/api/user', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -114,8 +116,8 @@ app.patch('/api/user', getUser, async (req: ExpressRequest, res: ExpressResponse
 });
 
 // Tasks API
-// FIX: Use aliased Express types for request and response.
-app.get('/api/tasks', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.get('/api/tasks', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const tasks = await Task.find({ userId: customReq.user._id }).sort({ dueDate: 1 });
@@ -126,8 +128,8 @@ app.get('/api/tasks', getUser, async (req: ExpressRequest, res: ExpressResponse)
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.post('/api/tasks', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.post('/api/tasks', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const task = await Task.create({ ...req.body, userId: customReq.user._id });
@@ -138,8 +140,8 @@ app.post('/api/tasks', getUser, async (req: ExpressRequest, res: ExpressResponse
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.patch('/api/tasks/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.patch('/api/tasks/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   // FIX: Added try-catch block for robust error handling.
   try {
@@ -158,8 +160,8 @@ app.patch('/api/tasks/:id', getUser, async (req: ExpressRequest, res: ExpressRes
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.delete('/api/tasks/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.delete('/api/tasks/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   // FIX: Added try-catch block for robust error handling.
   try {
@@ -175,8 +177,8 @@ app.delete('/api/tasks/:id', getUser, async (req: ExpressRequest, res: ExpressRe
 });
 
 // Follow-ups API
-// FIX: Use aliased Express types for request and response.
-app.get('/api/followups', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.get('/api/followups', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const followups = await FollowUp.find({ userId: customReq.user._id }).sort({ nextFollowUpDate: 1 });
@@ -187,8 +189,8 @@ app.get('/api/followups', getUser, async (req: ExpressRequest, res: ExpressRespo
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.post('/api/followups', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.post('/api/followups', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   // FIX: Added try-catch block for robust error handling.
   try {
@@ -200,8 +202,8 @@ app.post('/api/followups', getUser, async (req: ExpressRequest, res: ExpressResp
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.patch('/api/followups/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.patch('/api/followups/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   // FIX: Added try-catch block for robust error handling.
   try {
@@ -220,8 +222,8 @@ app.patch('/api/followups/:id', getUser, async (req: ExpressRequest, res: Expres
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.delete('/api/followups/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.delete('/api/followups/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   // FIX: Added try-catch block for robust error handling.
   try {
@@ -237,8 +239,8 @@ app.delete('/api/followups/:id', getUser, async (req: ExpressRequest, res: Expre
 });
 
 // Organization API
-// FIX: Use aliased Express types for request and response.
-app.get('/api/org', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.get('/api/org', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const members = await OrgMember.find({ ownerId: customReq.user._id });
@@ -249,8 +251,8 @@ app.get('/api/org', getUser, async (req: ExpressRequest, res: ExpressResponse) =
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.post('/api/org', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.post('/api/org', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.create({ ...req.body, ownerId: customReq.user._id });
@@ -261,8 +263,8 @@ app.post('/api/org', getUser, async (req: ExpressRequest, res: ExpressResponse) 
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.patch('/api/org/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.patch('/api/org/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.findOneAndUpdate(
@@ -277,8 +279,8 @@ app.patch('/api/org/:id', getUser, async (req: ExpressRequest, res: ExpressRespo
   }
 });
 
-// FIX: Use aliased Express types for request and response.
-app.delete('/api/org/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.delete('/api/org/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     await OrgMember.deleteOne({ _id: req.params.id, ownerId: customReq.user._id });
@@ -290,13 +292,13 @@ app.delete('/api/org/:id', getUser, async (req: ExpressRequest, res: ExpressResp
 });
 
 // Base Routes
-// FIX: Use aliased Express types for request and response.
-app.get('/', (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.get('/', (req: express.Request, res: express.Response) => {
   res.send('BizTrack API is running...');
 });
 
-// FIX: Use aliased Express types for request and response.
-app.get('/ping', (req: ExpressRequest, res: ExpressResponse) => {
+// FIX: Use namespaced express types to avoid conflicts.
+app.get('/ping', (req: express.Request, res: express.Response) => {
   res.status(200).send('pong');
 });
 
