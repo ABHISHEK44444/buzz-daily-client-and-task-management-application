@@ -1,7 +1,7 @@
 
 import cron from 'node-cron';
-import User from '../models/User.ts';
-import FollowUp from '../models/FollowUp.ts';
+import User from '../models/User.js';
+import FollowUp from '../models/FollowUp.js';
 
 const sendWhatsAppMessage = async (to: string, message: string) => {
   console.log(`\n--- 🤖 CRON JOB TRIGGERED: DAILY AGENDA ---`);
