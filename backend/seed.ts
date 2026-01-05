@@ -2,10 +2,10 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import User from './models/User.ts';
-import Task from './models/Task.ts';
-import FollowUp from './models/FollowUp.ts';
-import OrgMember from './models/OrgMember.ts';
+import User from './models/User.js';
+import Task from './models/Task.js';
+import FollowUp from './models/FollowUp.js';
+import OrgMember from './models/OrgMember.js';
 
 dotenv.config();
 
