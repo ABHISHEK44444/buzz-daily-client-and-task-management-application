@@ -1,5 +1,6 @@
 
-import express from 'express';
+
+import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -21,39 +22,53 @@ if (!MONGO_URI) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// --- Middleware ---
+
 // Production-ready CORS configuration
 const allowedOrigins = [
+  // Development URLs
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:8080',
-  process.env.FRONTEND_URL // Add your Vercel URL to your .env or Render dashboard
-].filter(Boolean) as string[];
+];
+
+// Add the deployed frontend URL from environment variables if it exists
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+  console.log(`✅ CORS: Allowing origin: ${process.env.FRONTEND_URL}`);
+}
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like mobile apps, server-to-server, or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    // In development, allow all origins for ease of use
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.error(`❌ CORS Error: Origin '${origin}' not allowed.`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-email'],
   credentials: true
-}) as any);
+}));
 
-app.use(express.json({ limit: '10mb' }) as any);
+app.use(express.json({ limit: '10mb' }));
 
 // --- API ROUTES DEFINITION ---
 // We define routes before starting the server.
 
 // Middleware to find/create user based on email header
-const getUser = async (req: any, res: any, next: any) => {
-  const email = req.headers['x-user-email'];
+const getUser = async (req: Request, res: Response, next: NextFunction) => {
+  const customReq = req as any;
+  const email = customReq.headers['x-user-email'];
   if (!email) return res.status(401).json({ error: 'User email required' });
   
   try {
@@ -69,7 +84,7 @@ const getUser = async (req: any, res: any, next: any) => {
         status: 'Active'
       });
     }
-    req.user = user;
+    customReq.user = user;
     next();
   } catch (err: any) {
     console.error('❌ AUTH ERROR (500):', err.message || err);
@@ -78,10 +93,11 @@ const getUser = async (req: any, res: any, next: any) => {
 };
 
 // User Profile API
-app.patch('/api/user', getUser, async (req: any, res: any) => {
+app.patch('/api/user', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
     const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
+      customReq.user._id,
       { $set: req.body },
       { new: true }
     );
@@ -93,9 +109,10 @@ app.patch('/api/user', getUser, async (req: any, res: any) => {
 });
 
 // Tasks API
-app.get('/api/tasks', getUser, async (req: any, res: any) => {
+app.get('/api/tasks', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
-    const tasks = await Task.find({ userId: req.user._id }).sort({ dueDate: 1 });
+    const tasks = await Task.find({ userId: customReq.user._id }).sort({ dueDate: 1 });
     res.json(tasks);
   } catch (err: any) {
     console.error('❌ TASK FETCH ERROR:', err.message);
@@ -103,9 +120,10 @@ app.get('/api/tasks', getUser, async (req: any, res: any) => {
   }
 });
 
-app.post('/api/tasks', getUser, async (req: any, res: any) => {
+app.post('/api/tasks', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
-    const task = await Task.create({ ...req.body, userId: req.user._id });
+    const task = await Task.create({ ...req.body, userId: customReq.user._id });
     res.status(201).json(task);
   } catch (err: any) {
     console.error('❌ TASK CREATE ERROR:', err.message);
@@ -113,24 +131,27 @@ app.post('/api/tasks', getUser, async (req: any, res: any) => {
   }
 });
 
-app.patch('/api/tasks/:id', getUser, async (req: any, res: any) => {
+app.patch('/api/tasks/:id', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user._id },
+    { _id: req.params.id, userId: customReq.user._id },
     req.body,
     { new: true }
   );
   res.json(task);
 });
 
-app.delete('/api/tasks/:id', getUser, async (req: any, res: any) => {
-  await Task.deleteOne({ _id: req.params.id, userId: req.user._id });
+app.delete('/api/tasks/:id', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
+  await Task.deleteOne({ _id: req.params.id, userId: customReq.user._id });
   res.status(204).send();
 });
 
 // Follow-ups API
-app.get('/api/followups', getUser, async (req: any, res: any) => {
+app.get('/api/followups', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
-    const followups = await FollowUp.find({ userId: req.user._id }).sort({ nextFollowUpDate: 1 });
+    const followups = await FollowUp.find({ userId: customReq.user._id }).sort({ nextFollowUpDate: 1 });
     res.json(followups);
   } catch (err: any) {
     console.error('❌ FOLLOWUP FETCH ERROR:', err.message);
@@ -138,29 +159,33 @@ app.get('/api/followups', getUser, async (req: any, res: any) => {
   }
 });
 
-app.post('/api/followups', getUser, async (req: any, res: any) => {
-  const followup = await FollowUp.create({ ...req.body, userId: req.user._id });
+app.post('/api/followups', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
+  const followup = await FollowUp.create({ ...req.body, userId: customReq.user._id });
   res.status(201).json(followup);
 });
 
-app.patch('/api/followups/:id', getUser, async (req: any, res: any) => {
+app.patch('/api/followups/:id', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   const followup = await FollowUp.findOneAndUpdate(
-    { _id: req.params.id, userId: req.user._id },
+    { _id: req.params.id, userId: customReq.user._id },
     req.body,
     { new: true }
   );
   res.json(followup);
 });
 
-app.delete('/api/followups/:id', getUser, async (req: any, res: any) => {
-  await FollowUp.deleteOne({ _id: req.params.id, userId: req.user._id });
+app.delete('/api/followups/:id', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
+  await FollowUp.deleteOne({ _id: req.params.id, userId: customReq.user._id });
   res.status(204).send();
 });
 
 // Organization API
-app.get('/api/org', getUser, async (req: any, res: any) => {
+app.get('/api/org', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
-    const members = await OrgMember.find({ ownerId: req.user._id });
+    const members = await OrgMember.find({ ownerId: customReq.user._id });
     res.json(members);
   } catch (err: any) {
     console.error('❌ ORG FETCH ERROR:', err.message);
@@ -168,9 +193,10 @@ app.get('/api/org', getUser, async (req: any, res: any) => {
   }
 });
 
-app.post('/api/org', getUser, async (req: any, res: any) => {
+app.post('/api/org', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
-    const member = await OrgMember.create({ ...req.body, ownerId: req.user._id });
+    const member = await OrgMember.create({ ...req.body, ownerId: customReq.user._id });
     res.status(201).json(member);
   } catch (err: any) {
     console.error('❌ ORG CREATE ERROR:', err.message);
@@ -178,10 +204,11 @@ app.post('/api/org', getUser, async (req: any, res: any) => {
   }
 });
 
-app.patch('/api/org/:id', getUser, async (req: any, res: any) => {
+app.patch('/api/org/:id', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
     const member = await OrgMember.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user._id },
+      { _id: req.params.id, ownerId: customReq.user._id },
       req.body,
       { new: true }
     );
@@ -192,9 +219,10 @@ app.patch('/api/org/:id', getUser, async (req: any, res: any) => {
   }
 });
 
-app.delete('/api/org/:id', getUser, async (req: any, res: any) => {
+app.delete('/api/org/:id', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
   try {
-    await OrgMember.deleteOne({ _id: req.params.id, ownerId: req.user._id });
+    await OrgMember.deleteOne({ _id: req.params.id, ownerId: customReq.user._id });
     res.status(204).send();
   } catch (err: any) {
     console.error('❌ ORG DELETE ERROR:', err.message);
@@ -203,11 +231,11 @@ app.delete('/api/org/:id', getUser, async (req: any, res: any) => {
 });
 
 // Base Routes
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('BizTrack API is running...');
 });
 
-app.get('/ping', (req, res) => {
+app.get('/ping', (req: Request, res: Response) => {
   res.status(200).send('pong');
 });
 
