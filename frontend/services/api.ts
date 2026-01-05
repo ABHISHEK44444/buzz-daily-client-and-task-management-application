@@ -1,9 +1,26 @@
 
-const BACKEND_URL = typeof (import.meta as any).env?.VITE_API_KEY !== 'undefined'
-  ? (import.meta as any).env.VITE_API_KEY
-  : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? 'http://localhost:5000'
-      : '');
+const getApiUrl = () => {
+  // Safe access for Vite environment variables
+  const env = (import.meta as any).env || {};
+  
+  // 1. Prioritize the VITE_API_URL environment variable (for Vercel/production)
+  let url = env.VITE_API_URL;
+
+  // 2. If not set, check if we are in a local development environment
+  if (!url && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    url = 'http://localhost:5000';
+  }
+
+  // 3. Fallback to an empty string for same-origin requests if all else fails
+  url = url || '';
+
+  // 4. Remove trailing slash to prevent double-slash issues
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  
+  return url;
+};
 
 export const apiFetch = async (endpoint: string, userEmail: string, options: RequestInit = {}) => {
   const headers = {
@@ -12,7 +29,7 @@ export const apiFetch = async (endpoint: string, userEmail: string, options: Req
     ...(options.headers || {})
   };
 
-  const baseUrl = BACKEND_URL || '';
+  const baseUrl = getApiUrl();
   
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
