@@ -3,11 +3,11 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { initCronJobs } from './jobs/whatsappCron.ts';
-import User from './models/User.ts';
-import Task from './models/Task.ts';
-import FollowUp from './models/FollowUp.ts';
-import OrgMember from './models/OrgMember.ts';
+import { initCronJobs } from './jobs/whatsappCron.js';
+import User from './models/User.js';
+import Task from './models/Task.js';
+import FollowUp from './models/FollowUp.js';
+import OrgMember from './models/OrgMember.js';
 
 // Load env vars and perform critical checks
 dotenv.config();
