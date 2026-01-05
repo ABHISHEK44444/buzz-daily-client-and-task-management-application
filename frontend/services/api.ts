@@ -1,4 +1,7 @@
 
+
+
+
 // --- IMPORTANT ---
 // PASTE YOUR FULL RENDER BACKEND URL HERE.
 // Example: 'https://your-backend-name.onrender.com'
@@ -29,6 +32,14 @@ export const apiFetch = async (endpoint: string, userEmail: string, options: Req
 
   const baseUrl = getApiUrl();
   
+  // Fail-fast check to ensure the backend URL is configured for deployed environments.
+  if (!baseUrl && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    const errorMsg = "Backend URL is not configured. Please paste your Render URL into the BACKEND_URL variable in services/api.ts.";
+    console.error(`❌ CONFIGURATION ERROR: ${errorMsg}`);
+    // Throwing an error here will trigger the offline mode banner with a clear cause.
+    throw new Error(errorMsg);
+  }
+
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
     
