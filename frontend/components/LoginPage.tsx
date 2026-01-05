@@ -43,6 +43,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         const newUser: UserProfile = {
           name,
           email,
+          password,
           role: businessLevel,
           team: 'Independent Admin',
           status: 'Active',
@@ -61,13 +62,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         // Handle Secure Login
         const found = users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
         
-        // Simple mock: we accept any password for valid emails for this demo
-        if (found) {
+        if (found && found.password === password) {
             found.lastLogin = new Date().toLocaleString();
             localStorage.setItem('biztrack_all_users', JSON.stringify(users));
             setIsLoading(false);
             onLogin(found);
-        } else if (email === 'john.doe@biztrack.com') {
+        } else if (email.toLowerCase() === 'john.doe@biztrack.com' && password === 'password123') {
             // Default built-in Demo account
             setIsLoading(false);
             onLogin({
@@ -82,7 +82,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 agendaReminderTime: '09:00'
             });
         } else {
-            setError("Account not found. Please verify your email or create a new account.");
+            if (found) {
+              setError("The password you entered is incorrect. Please try again.");
+            } else {
+              setError("Account not found. Please verify your email or create a new account.");
+            }
             setIsLoading(false);
         }
       }
