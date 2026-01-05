@@ -264,6 +264,10 @@ const App: React.FC = () => {
 
   const handleSaveMember = async () => {
     if (!memberForm.name || !memberForm.role) return;
+    if (!isBackendLive) {
+      alert("This feature is disabled in offline mode. Please connect to the backend to manage your team.");
+      return;
+    }
     try {
       if (editingMember) {
         await apiFetch(`/api/org/${editingMember.id}`, currentUser.email, {
@@ -285,6 +289,10 @@ const App: React.FC = () => {
 
   const handleDeleteMember = async (nodeId: string) => {
     if (!window.confirm("Are you sure?")) return;
+    if (!isBackendLive) {
+      alert("This feature is disabled in offline mode. Please connect to the backend to manage your team.");
+      return;
+    }
     try {
       await apiFetch(`/api/org/${nodeId}`, currentUser.email, { method: 'DELETE' });
       await refreshOrgData();
@@ -349,6 +357,12 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans relative overflow-hidden">
+      {!isBackendLive && !isLoading && (
+        <div className="absolute top-0 left-0 right-0 bg-amber-400 text-black text-xs font-bold text-center p-1 z-[200] shadow-md">
+          <i className="fa-solid fa-triangle-exclamation mr-2"></i>
+          Offline Mode: Backend not connected. Displaying sample data.
+        </div>
+      )}
       {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[40] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-[50] w-72 bg-primary text-white flex flex-col transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-6 flex items-center justify-between border-b border-slate-800">
