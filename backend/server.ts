@@ -1,6 +1,10 @@
 
 
-import express, { Request, Response, NextFunction } from 'express';
+
+
+
+// FIX: Aliased Request and Response to avoid conflict with global DOM types.
+import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -24,7 +28,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- Middleware ---
 
-// Production-ready CORS configuration
+// Enhanced, production-ready CORS configuration to resolve deployment issues.
 const allowedOrigins = [
   // Development URLs
   'http://localhost:3000',
@@ -32,27 +36,26 @@ const allowedOrigins = [
   'http://localhost:8080',
 ];
 
-// Add the deployed frontend URL from environment variables if it exists
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-  console.log(`✅ CORS: Allowing origin: ${process.env.FRONTEND_URL}`);
+const frontendUrl = process.env.FRONTEND_URL;
+if (frontendUrl) {
+  // Sanitize URL by removing any trailing slash to prevent mismatch errors
+  const sanitizedUrl = frontendUrl.endsWith('/') ? frontendUrl.slice(0, -1) : frontendUrl;
+  allowedOrigins.push(sanitizedUrl);
+  console.log(`✅ CORS: Production URL '${sanitizedUrl}' has been added to the list of allowed origins.`);
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn(`⚠️ CORS WARNING: 'FRONTEND_URL' environment variable is not set. Your deployed frontend will be blocked.`);
 }
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, server-to-server, or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // In development, allow all origins for ease of use
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // The '!origin' check allows server-to-server requests and REST tools.
+    // The `allowedOrigins.includes(origin)` check validates requests from browsers.
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.error(`❌ CORS Error: Origin '${origin}' not allowed.`);
-      callback(new Error('Not allowed by CORS'));
+      // Block requests from unapproved origins
+      console.error(`❌ CORS Blocked: The origin '${origin}' is not in the allowed list: [${allowedOrigins.join(', ')}]`);
+      callback(new Error('This origin is not allowed by the server\'s CORS policy.'));
     }
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -66,7 +69,8 @@ app.use(express.json({ limit: '10mb' }));
 // We define routes before starting the server.
 
 // Middleware to find/create user based on email header
-const getUser = async (req: Request, res: Response, next: NextFunction) => {
+// FIX: Use aliased Express types for request, response, and next function.
+const getUser = async (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
   const customReq = req as any;
   const email = customReq.headers['x-user-email'];
   if (!email) return res.status(401).json({ error: 'User email required' });
@@ -93,7 +97,8 @@ const getUser = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 // User Profile API
-app.patch('/api/user', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.patch('/api/user', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -109,7 +114,8 @@ app.patch('/api/user', getUser, async (req: Request, res: Response) => {
 });
 
 // Tasks API
-app.get('/api/tasks', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.get('/api/tasks', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const tasks = await Task.find({ userId: customReq.user._id }).sort({ dueDate: 1 });
@@ -120,7 +126,8 @@ app.get('/api/tasks', getUser, async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/tasks', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.post('/api/tasks', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const task = await Task.create({ ...req.body, userId: customReq.user._id });
@@ -131,24 +138,45 @@ app.post('/api/tasks', getUser, async (req: Request, res: Response) => {
   }
 });
 
-app.patch('/api/tasks/:id', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.patch('/api/tasks/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
-  const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, userId: customReq.user._id },
-    req.body,
-    { new: true }
-  );
-  res.json(task);
+  // FIX: Added try-catch block for robust error handling.
+  try {
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: customReq.user._id },
+      req.body,
+      { new: true }
+    );
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+    res.json(task);
+  } catch (err: any) {
+    console.error(`❌ TASK UPDATE ERROR for ID ${req.params.id}:`, err.message);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
 });
 
-app.delete('/api/tasks/:id', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.delete('/api/tasks/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
-  await Task.deleteOne({ _id: req.params.id, userId: customReq.user._id });
-  res.status(204).send();
+  // FIX: Added try-catch block for robust error handling.
+  try {
+    const result = await Task.deleteOne({ _id: req.params.id, userId: customReq.user._id });
+    if (result.deletedCount === 0) {
+        return res.status(404).json({ error: "Task not found" });
+    }
+    res.status(204).send();
+  } catch (err: any) {
+    console.error(`❌ TASK DELETE ERROR for ID ${req.params.id}:`, err.message);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
 });
 
 // Follow-ups API
-app.get('/api/followups', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.get('/api/followups', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const followups = await FollowUp.find({ userId: customReq.user._id }).sort({ nextFollowUpDate: 1 });
@@ -159,30 +187,58 @@ app.get('/api/followups', getUser, async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/followups', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.post('/api/followups', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
-  const followup = await FollowUp.create({ ...req.body, userId: customReq.user._id });
-  res.status(201).json(followup);
+  // FIX: Added try-catch block for robust error handling.
+  try {
+    const followup = await FollowUp.create({ ...req.body, userId: customReq.user._id });
+    res.status(201).json(followup);
+  } catch (err: any) {
+    console.error('❌ FOLLOWUP CREATE ERROR:', err.message);
+    res.status(500).json({ error: 'Failed to create follow-up' });
+  }
 });
 
-app.patch('/api/followups/:id', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.patch('/api/followups/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
-  const followup = await FollowUp.findOneAndUpdate(
-    { _id: req.params.id, userId: customReq.user._id },
-    req.body,
-    { new: true }
-  );
-  res.json(followup);
+  // FIX: Added try-catch block for robust error handling.
+  try {
+    const followup = await FollowUp.findOneAndUpdate(
+      { _id: req.params.id, userId: customReq.user._id },
+      req.body,
+      { new: true }
+    );
+    if (!followup) {
+      return res.status(404).json({ error: "Follow-up not found" });
+    }
+    res.json(followup);
+  } catch (err: any) {
+    console.error(`❌ FOLLOWUP UPDATE ERROR for ID ${req.params.id}:`, err.message);
+    res.status(500).json({ error: 'Failed to update follow-up' });
+  }
 });
 
-app.delete('/api/followups/:id', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.delete('/api/followups/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
-  await FollowUp.deleteOne({ _id: req.params.id, userId: customReq.user._id });
-  res.status(204).send();
+  // FIX: Added try-catch block for robust error handling.
+  try {
+    const result = await FollowUp.deleteOne({ _id: req.params.id, userId: customReq.user._id });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Follow-up not found" });
+    }
+    res.status(204).send();
+  } catch (err: any) {
+    console.error(`❌ FOLLOWUP DELETE ERROR for ID ${req.params.id}:`, err.message);
+    res.status(500).json({ error: 'Failed to delete follow-up' });
+  }
 });
 
 // Organization API
-app.get('/api/org', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.get('/api/org', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const members = await OrgMember.find({ ownerId: customReq.user._id });
@@ -193,7 +249,8 @@ app.get('/api/org', getUser, async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/org', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.post('/api/org', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.create({ ...req.body, ownerId: customReq.user._id });
@@ -204,7 +261,8 @@ app.post('/api/org', getUser, async (req: Request, res: Response) => {
   }
 });
 
-app.patch('/api/org/:id', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.patch('/api/org/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.findOneAndUpdate(
@@ -219,7 +277,8 @@ app.patch('/api/org/:id', getUser, async (req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/org/:id', getUser, async (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.delete('/api/org/:id', getUser, async (req: ExpressRequest, res: ExpressResponse) => {
   const customReq = req as any;
   try {
     await OrgMember.deleteOne({ _id: req.params.id, ownerId: customReq.user._id });
@@ -231,11 +290,13 @@ app.delete('/api/org/:id', getUser, async (req: Request, res: Response) => {
 });
 
 // Base Routes
-app.get('/', (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.get('/', (req: ExpressRequest, res: ExpressResponse) => {
   res.send('BizTrack API is running...');
 });
 
-app.get('/ping', (req: Request, res: Response) => {
+// FIX: Use aliased Express types for request and response.
+app.get('/ping', (req: ExpressRequest, res: ExpressResponse) => {
   res.status(200).send('pong');
 });
 
