@@ -16,7 +16,31 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors() as any);
+// Production-ready CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  process.env.FRONTEND_URL // Add your Vercel URL to your .env or Render dashboard
+].filter(Boolean) as string[];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow everything or check against allowed list
+    if (process.env.NODE_ENV === 'development' || allowedOrigins.indexOf(origin) !== -1 || !process.env.FRONTEND_URL) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-email'],
+  credentials: true
+}) as any);
+
 app.use(express.json({ limit: '10mb' }) as any);
 
 // Database Connection
