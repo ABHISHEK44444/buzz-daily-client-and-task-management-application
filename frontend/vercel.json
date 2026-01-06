@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/server.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/models/**", "backend/jobs/**"]
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "." }
+    }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/backend/server.ts" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
