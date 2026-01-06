@@ -129,6 +129,28 @@ const App: React.FC = () => {
     }
   }, [editingFollowUp]);
 
+  // Keep-alive ping to prevent the Render backend from spinning down
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        // The /ping endpoint is lightweight and designed for this purpose.
+        await apiFetch('/ping');
+        console.log('✅ Backend keep-alive ping successful.');
+      } catch (error) {
+        // Silently fail without disturbing the user.
+        // This might happen if the user goes offline or the server is truly down.
+        console.warn('Backend keep-alive ping failed. The server might be offline or unreachable.');
+      }
+    }, 10 * 60 * 1000); // Ping every 10 minutes to be safe
+
+    // Cleanup on component unmount or when user logs out
+    return () => {
+      clearInterval(keepAliveInterval);
+    };
+  }, [isAuthenticated]);
+
   const buildOrgTree = (members: any[]): OrgNode | null => {
     if (!members || members.length === 0) return null;
     const idMap: Record<string, OrgNode> = {};
