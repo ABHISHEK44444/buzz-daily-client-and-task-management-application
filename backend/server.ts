@@ -1,5 +1,5 @@
-// FIX: Using named imports for Request, Response, and NextFunction from 'express'
-// to avoid conflicts with global DOM types and resolve type errors.
+// FIX: Explicitly importing Request, Response, and NextFunction from express to avoid
+// conflicts with global DOM types and resolve type errors.
 import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
