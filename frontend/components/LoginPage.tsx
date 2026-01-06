@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { UserProfile } from '../types';
+import { apiFetch } from '../services/api';
 
 interface LoginPageProps {
   onLogin: (user: UserProfile) => void;
@@ -10,6 +11,16 @@ interface LoginPageProps {
 const HIERARCHY_LEVELS = [
   'Supervisor', 'World Team', 'Active World Team', 'GET', 'GET 2500', 'Millionaire Team', 'Millionaire Team 7500', 'President Team', 'Chairman Club', 'Founder Circle'
 ];
+
+// Replicating the logic from api.ts for consistency
+const getApiUrl = () => {
+    const BACKEND_URL = ''; // This should match the one in api.ts
+    if (BACKEND_URL) return BACKEND_URL;
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
+    }
+    return ''; 
+};
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -21,76 +32,39 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     
-    // Simulate API delay
-    setTimeout(() => {
-      // Logic for Multi-Admin Support:
-      // In a real app, this would be a fetch to POST /api/register or /api/login
-      const users = JSON.parse(localStorage.getItem('biztrack_all_users') || '[]');
-      
-      if (isRegistering) {
-        // Handle Account Creation
-        if (users.find((u: any) => u.email.toLowerCase() === email.toLowerCase())) {
-          setError("An account with this email already exists.");
-          setIsLoading(false);
-          return;
-        }
-
-        const newUser: UserProfile = {
-          name,
-          email,
-          password,
-          role: businessLevel,
-          team: 'Independent Admin',
-          status: 'Active',
-          lastLogin: new Date().toLocaleString(),
-          joinedDate: new Date().toISOString().split('T')[0],
-          phone: '',
-          bio: `Professional ${businessLevel} admin account.`,
-          agendaReminderTime: '09:00'
-        };
-
-        users.push(newUser);
-        localStorage.setItem('biztrack_all_users', JSON.stringify(users));
-        setIsLoading(false);
-        onLogin(newUser);
-      } else {
-        // Handle Secure Login
-        const found = users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (found && found.password === password) {
-            found.lastLogin = new Date().toLocaleString();
-            localStorage.setItem('biztrack_all_users', JSON.stringify(users));
-            setIsLoading(false);
-            onLogin(found);
-        } else if (email.toLowerCase() === 'john.doe@biztrack.com' && password === 'password123') {
-            // Default built-in Demo account
-            setIsLoading(false);
-            onLogin({
-                name: 'John Doe',
-                email: 'john.doe@biztrack.com',
-                role: 'President Team',
-                team: 'Global Sales',
-                status: 'Active',
-                lastLogin: new Date().toLocaleString(),
-                joinedDate: '2023-01-15',
-                phone: '+1 (555) 000-0000',
-                agendaReminderTime: '09:00'
-            });
-        } else {
-            if (found) {
-              setError("The password you entered is incorrect. Please try again.");
-            } else {
-              setError("Account not found. Please verify your email or create a new account.");
-            }
-            setIsLoading(false);
-        }
+    const baseUrl = getApiUrl();
+    const endpoint = isRegistering ? '/api/register' : '/api/login';
+    const payload = isRegistering 
+      ? { name, email, password, role: businessLevel }
+      : { email, password };
+  
+    try {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed with status ${response.status}`);
       }
-    }, 1000);
+      
+      onLogin(data);
+  
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inputClasses = "appearance-none block w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-accent focus:border-accent sm:text-sm transition-all";
