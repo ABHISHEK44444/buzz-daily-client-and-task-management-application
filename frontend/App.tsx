@@ -27,9 +27,10 @@ const ORG_LEVELS: OrgLevel[] = [
 ];
 
 const App: React.FC = () => {
-  // Always start in a logged-out state to ensure the login page is shown first.
+  // Authentication & User State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_PROFILE);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [currentView, setCurrentView] = useState<ViewState>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.VIEW);
@@ -40,7 +41,7 @@ const App: React.FC = () => {
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [orgData, setOrgData] = useState<OrgNode | null>(null);
   const [isBackendLive, setIsBackendLive] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // For data loading, not auth
   const [isRetrying, setIsRetrying] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -66,6 +67,60 @@ const App: React.FC = () => {
     nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
   });
 
+  const navigateTo = (view: ViewState) => {
+    setCurrentView(view);
+    setIsMobileMenuOpen(false);
+    localStorage.setItem(STORAGE_KEYS.VIEW, view);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER_EMAIL);
+    localStorage.removeItem(STORAGE_KEYS.VIEW);
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setCurrentView(ViewState.DASHBOARD);
+  };
+  
+  // Session Verification on App Load
+  useEffect(() => {
+    const verifySession = async () => {
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const email = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER_EMAIL);
+
+      if (token && email) {
+        try {
+          const userProfileData = await apiFetch('/api/user', email);
+          if (userProfileData) {
+            const userProfile: UserProfile = {
+              name: userProfileData.name,
+              email: userProfileData.email,
+              role: userProfileData.role,
+              team: userProfileData.team,
+              status: userProfileData.status,
+              lastLogin: new Date(userProfileData.lastLogin).toLocaleString(),
+              joinedDate: new Date(userProfileData.joinedDate).toISOString().split('T')[0],
+              passwordLastChanged: userProfileData.passwordLastChanged,
+              avatarUrl: userProfileData.avatarUrl,
+              bio: userProfileData.bio,
+              phone: userProfileData.phone,
+              agendaReminderTime: userProfileData.agendaReminderTime,
+            };
+            setCurrentUser(userProfile);
+            setIsAuthenticated(true);
+          } else {
+            handleLogout();
+          }
+        } catch (error) {
+          console.error("Session validation failed, logging out:", error);
+          handleLogout();
+        }
+      }
+      setIsAuthLoading(false);
+    };
+    verifySession();
+  }, []);
+
   const buildOrgTree = (members: any[]): OrgNode | null => {
     if (!members || members.length === 0) return null;
     const idMap: Record<string, OrgNode> = {};
@@ -88,6 +143,7 @@ const App: React.FC = () => {
   };
 
   const refreshOrgData = async () => {
+    if (!currentUser) return;
     try {
       const remoteOrg = await apiFetch('/api/org', currentUser.email);
       setOrgData(buildOrgTree(remoteOrg));
@@ -97,6 +153,7 @@ const App: React.FC = () => {
   };
 
   const loadData = async () => {
+    if (!currentUser) return;
     setIsLoading(true);
     setIsRetrying(true);
     try {
@@ -111,8 +168,6 @@ const App: React.FC = () => {
       setIsBackendLive(true);
     } catch (err) {
       setIsBackendLive(false);
-      // Fallback to an empty state instead of sample data to avoid confusion.
-      // The "Offline Mode" banner will now correctly indicate an empty, disconnected state.
       setTasks([]);
       setFollowUps([]);
       setOrgData(null);
@@ -123,13 +178,14 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && currentUser) {
       loadData();
     }
-  }, [isAuthenticated, currentUser.email]);
+  }, [isAuthenticated, currentUser]);
 
   // Task Actions
   const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
+    if (!currentUser) return;
     try {
       if (isBackendLive) {
         const saved = await apiFetch('/api/tasks', currentUser.email, { method: 'POST', body: JSON.stringify(newTask) });
@@ -143,6 +199,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteTask = async (id: string) => {
+    if (!currentUser) return;
     try {
       if (isBackendLive) {
         await apiFetch(`/api/tasks/${id}`, currentUser.email, { method: 'DELETE' });
@@ -154,6 +211,7 @@ const App: React.FC = () => {
   };
 
   const handleToggleTaskStatus = async (id: string) => {
+    if (!currentUser) return;
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     const newStatus = task.status === Status.COMPLETED ? Status.PENDING : Status.COMPLETED;
@@ -177,6 +235,7 @@ const App: React.FC = () => {
 
   // Follow-up Actions
   const handleFollowUpStatusChange = async (id: string, status: Status) => {
+    if (!currentUser) return;
     try {
       if (isBackendLive) {
         const updated = await apiFetch(`/api/followups/${id}`, currentUser.email, {
@@ -195,6 +254,7 @@ const App: React.FC = () => {
   };
 
   const handleCompleteFollowUpCycle = async (id: string, nextDate: string, nextNotes?: string, changes?: { status?: Status, clientType?: ClientType }) => {
+    if (!currentUser) return;
     const existing = followUps.find(f => f.id === id);
     const updates = { 
       nextFollowUpDate: nextDate, 
@@ -220,6 +280,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteFollowUp = async (id: string) => {
+    if (!currentUser) return;
     try {
       if (isBackendLive) {
         await apiFetch(`/api/followups/${id}`, currentUser.email, { method: 'DELETE' });
@@ -231,7 +292,7 @@ const App: React.FC = () => {
   };
 
   const handleAddFollowUp = async () => {
-    if (!newFollowUp.clientName || !newFollowUp.mobile) return;
+    if (!currentUser || !newFollowUp.clientName || !newFollowUp.mobile) return;
     const followUpData = { ...newFollowUp, id: Date.now().toString(), lastContactDate: new Date().toISOString().split('T')[0] } as FollowUp;
     try {
       if (isBackendLive) {
@@ -263,7 +324,7 @@ const App: React.FC = () => {
   };
 
   const handleSaveMember = async () => {
-    if (!memberForm.name || !memberForm.role) return;
+    if (!currentUser || !memberForm.name || !memberForm.role) return;
     if (!isBackendLive) {
       alert("This feature is disabled in offline mode. Please connect to the backend to manage your team.");
       return;
@@ -288,7 +349,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteMember = async (nodeId: string) => {
-    if (!window.confirm("Are you sure?")) return;
+    if (!currentUser || !window.confirm("Are you sure?")) return;
     if (!isBackendLive) {
       alert("This feature is disabled in offline mode. Please connect to the backend to manage your team.");
       return;
@@ -301,16 +362,12 @@ const App: React.FC = () => {
     }
   };
 
-  const navigateTo = (view: ViewState) => {
-    setCurrentView(view);
-    setIsMobileMenuOpen(false);
-    localStorage.setItem(STORAGE_KEYS.VIEW, view);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_USER_EMAIL);
-    setIsAuthenticated(false);
+  const handleLogin = (user: UserProfile) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, 'true');
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_USER_EMAIL, user.email);
+    navigateTo(ViewState.DASHBOARD);
   };
 
   const getTodaysCalls = () => {
@@ -337,7 +394,17 @@ const App: React.FC = () => {
     return Math.round((tasks.filter(t => t.status === Status.COMPLETED).length / tasks.length) * 100);
   }, [tasks]);
 
-  if (!isAuthenticated) return <LoginPage onLogin={(user) => { setIsAuthenticated(true); setCurrentUser(user); localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, 'true'); localStorage.setItem(STORAGE_KEYS.ACTIVE_USER_EMAIL, user.email); }} />;
+  if (isAuthLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !currentUser) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   const inputClasses = "block w-full rounded-lg border-slate-200 bg-slate-50 text-slate-800 px-4 py-2.5 focus:bg-white focus:border-accent focus:ring-accent transition-all shadow-sm text-sm";
   const labelClasses = "block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5";
