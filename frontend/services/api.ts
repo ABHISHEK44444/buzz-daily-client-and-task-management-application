@@ -1,7 +1,3 @@
-
-
-
-
 // --- IMPORTANT ---
 // PASTE YOUR FULL RENDER BACKEND URL HERE.
 // Example: 'https://your-backend-name.onrender.com'
@@ -23,12 +19,18 @@ const getApiUrl = () => {
   return ''; 
 };
 
-export const apiFetch = async (endpoint: string, userEmail: string, options: RequestInit = {}) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-user-email': userEmail,
-    ...(options.headers || {})
-  };
+export const apiFetch = async (endpoint: string, userEmail?: string, options: RequestInit = {}) => {
+  // FIX: Use the Headers API to correctly handle various HeadersInit types (Headers, string[][], Record<string, string>).
+  // The previous implementation with object spreading was incorrect for Headers objects and string arrays.
+  const headers = new Headers(options.headers);
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (userEmail) {
+    headers.set('x-user-email', userEmail);
+  }
 
   const baseUrl = getApiUrl();
   
@@ -43,17 +45,26 @@ export const apiFetch = async (endpoint: string, userEmail: string, options: Req
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, { ...options, headers });
     
+    const responseText = await response.text(); // Read as text first to handle non-JSON responses gracefully
+
     if (!response.ok) {
-      // More specific error handling can be added here
-      throw new Error(`API request failed with status ${response.status}`);
+      // Attempt to parse error as JSON, but fall back to the raw text
+      try {
+        const errorJson = JSON.parse(responseText);
+        throw new Error(errorJson.error || `API request failed with status ${response.status}`);
+      } catch (e) {
+        // The error response wasn't JSON. Throw the raw text.
+        throw new Error(responseText || `API request failed with status ${response.status}`);
+      }
     }
     
     // Handle responses with no content
-    if (response.status === 204) {
+    if (response.status === 204 || !responseText) {
       return null;
     }
     
-    return response.json();
+    // Safely parse the success response
+    return JSON.parse(responseText);
   } catch (err) {
     console.warn(`Backend connectivity issue:`, err);
     // Re-throw the error to be handled by the calling function
