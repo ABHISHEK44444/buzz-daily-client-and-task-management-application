@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { UserProfile } from '../types';
@@ -11,16 +10,6 @@ interface LoginPageProps {
 const HIERARCHY_LEVELS = [
   'Supervisor', 'World Team', 'Active World Team', 'GET', 'GET 2500', 'Millionaire Team', 'Millionaire Team 7500', 'President Team', 'Chairman Club', 'Founder Circle'
 ];
-
-// Replicating the logic from api.ts for consistency
-const getApiUrl = () => {
-    const BACKEND_URL = ''; // This should match the one in api.ts
-    if (BACKEND_URL) return BACKEND_URL;
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:5000';
-    }
-    return ''; 
-};
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -37,30 +26,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setIsLoading(true);
     setError(null);
     
-    const baseUrl = getApiUrl();
     const endpoint = isRegistering ? '/api/register' : '/api/login';
     const payload = isRegistering 
       ? { name, email, password, role: businessLevel }
       : { email, password };
   
     try {
-      const response = await fetch(`${baseUrl}${endpoint}`, {
+      // Use the centralized and robust apiFetch function
+      const data = await apiFetch(endpoint, undefined, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       });
-  
-      const data = await response.json();
-  
-      if (!response.ok) {
-        throw new Error(data.error || `Request failed with status ${response.status}`);
-      }
       
       onLogin(data);
   
     } catch (err: any) {
+      // The error message from apiFetch will be much more informative now
       setError(err.message);
     } finally {
       setIsLoading(false);
