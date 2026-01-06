@@ -120,6 +120,14 @@ const App: React.FC = () => {
     };
     verifySession();
   }, []);
+  
+  // Open modal and populate form when editing a client
+  useEffect(() => {
+    if (editingFollowUp) {
+      setNewFollowUp(editingFollowUp);
+      setIsAddingFollowUp(true);
+    }
+  }, [editingFollowUp]);
 
   const buildOrgTree = (members: any[]): OrgNode | null => {
     if (!members || members.length === 0) return null;
@@ -290,6 +298,35 @@ const App: React.FC = () => {
       setFollowUps(prev => prev.filter(f => f.id !== id));
     }
   };
+  
+  const handleCloseFollowUpModal = () => {
+    setIsAddingFollowUp(false);
+    setEditingFollowUp(null);
+    setNewFollowUp({
+      clientName: '', company: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
+      frequency: Frequency.WEEKLY, priority: Priority.MEDIUM, notes: '',
+      nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
+    });
+  };
+
+  const handleUpdateFollowUp = async () => {
+    if (!currentUser || !editingFollowUp) return;
+    try {
+      if (isBackendLive) {
+        const updated = await apiFetch(`/api/followups/${editingFollowUp.id}`, currentUser.email, {
+          method: 'PATCH',
+          body: JSON.stringify(newFollowUp)
+        });
+        if (updated) {
+          setFollowUps(prev => prev.map(f => f.id === editingFollowUp.id ? { ...updated, id: updated._id || updated.id } : f));
+        }
+      } else {
+        setFollowUps(prev => prev.map(f => f.id === editingFollowUp.id ? { ...f, ...newFollowUp } as FollowUp : f));
+      }
+    } catch (err) {
+      setFollowUps(prev => prev.map(f => f.id === editingFollowUp.id ? { ...f, ...newFollowUp } as FollowUp : f));
+    }
+  };
 
   const handleAddFollowUp = async () => {
     if (!currentUser || !newFollowUp.clientName || !newFollowUp.mobile) return;
@@ -304,8 +341,15 @@ const App: React.FC = () => {
     } catch (err) {
       setFollowUps(prev => [followUpData, ...prev]);
     }
-    setNewFollowUp({ clientName: '', company: '', mobile: '', email: '', clientType: ClientType.PROSPECT, frequency: Frequency.WEEKLY, priority: Priority.MEDIUM, notes: '', nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING });
-    setIsAddingFollowUp(false);
+  };
+  
+  const handleSaveFollowUp = async () => {
+    if (editingFollowUp) {
+      await handleUpdateFollowUp();
+    } else {
+      await handleAddFollowUp();
+    }
+    handleCloseFollowUpModal();
   };
 
   // Org Chart Actions
@@ -825,14 +869,24 @@ const App: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Follow-up Add Modal */}
-      <Modal isOpen={isAddingFollowUp} onClose={() => setIsAddingFollowUp(false)} title="New Client Record">
-        <form onSubmit={(e) => { e.preventDefault(); handleAddFollowUp(); }} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="space-y-1"><label className={labelClasses}>Full Name</label><input required type="text" className={inputClasses} value={newFollowUp.clientName} onChange={e => setNewFollowUp({...newFollowUp, clientName: e.target.value})} /></div><div className="space-y-1"><label className={labelClasses}>Phone Number</label><PhoneInput required value={newFollowUp.mobile || ''} onChange={v => setNewFollowUp({...newFollowUp, mobile: v})} /></div></div>
-          <div className="space-y-1"><label className={labelClasses}>Company</label><input type="text" className={inputClasses} value={newFollowUp.company} onChange={e => setNewFollowUp({...newFollowUp, company: e.target.value})} /></div>
-          <div className="grid grid-cols-2 gap-4"><div className="space-y-1"><label className={labelClasses}>Client Type</label><select className={inputClasses} value={newFollowUp.clientType} onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}>{Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}</select></div><div className="space-y-1"><label className={labelClasses}>Priority</label><select className={inputClasses} value={newFollowUp.priority} onChange={e => setNewFollowUp({...newFollowUp, priority: e.target.value as Priority})}>{Object.values(Priority).map(v => <option key={v} value={v}>{v}</option>)}</select></div></div>
+      {/* Follow-up Add/Edit Modal */}
+      <Modal isOpen={isAddingFollowUp} onClose={handleCloseFollowUpModal} title={editingFollowUp ? "Edit Client Record" : "New Client Record"}>
+        <form onSubmit={(e) => { e.preventDefault(); handleSaveFollowUp(); }} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1"><label className={labelClasses}>Full Name</label><input required type="text" className={inputClasses} value={newFollowUp.clientName} onChange={e => setNewFollowUp({...newFollowUp, clientName: e.target.value})} /></div>
+            <div className="space-y-1"><label className={labelClasses}>Phone Number</label><PhoneInput required value={newFollowUp.mobile || ''} onChange={v => setNewFollowUp({...newFollowUp, mobile: v})} /></div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1"><label className={labelClasses}>Company</label><input type="text" className={inputClasses} value={newFollowUp.company} onChange={e => setNewFollowUp({...newFollowUp, company: e.target.value})} /></div>
+            <div className="space-y-1"><label className={labelClasses}>Email</label><input type="email" className={inputClasses} value={newFollowUp.email || ''} onChange={e => setNewFollowUp({...newFollowUp, email: e.target.value})} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1"><label className={labelClasses}>Client Type</label><select className={inputClasses} value={newFollowUp.clientType} onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}>{Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+            <div className="space-y-1"><label className={labelClasses}>Priority</label><select className={inputClasses} value={newFollowUp.priority} onChange={e => setNewFollowUp({...newFollowUp, priority: e.target.value as Priority})}>{Object.values(Priority).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+          </div>
           <div className="space-y-1"><label className={labelClasses}>Next Follow-up Date</label><DatePicker value={newFollowUp.nextFollowUpDate || ''} onChange={e => setNewFollowUp({...newFollowUp, nextFollowUpDate: e.target.value})} /></div>
-          <div className="pt-4 flex justify-end gap-3"><Button variant="ghost" type="button" onClick={() => setIsAddingFollowUp(false)}>Cancel</Button><Button type="submit">Create</Button></div>
+          <div className="space-y-1"><label className={labelClasses}>Notes</label><textarea className={inputClasses} value={newFollowUp.notes || ''} onChange={e => setNewFollowUp({...newFollowUp, notes: e.target.value})} /></div>
+          <div className="pt-4 flex justify-end gap-3"><Button variant="ghost" type="button" onClick={handleCloseFollowUpModal}>Cancel</Button><Button type="submit">{editingFollowUp ? 'Save Changes' : 'Create'}</Button></div>
         </form>
       </Modal>
     </div>
