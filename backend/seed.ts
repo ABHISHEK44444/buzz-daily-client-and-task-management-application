@@ -30,7 +30,7 @@ const seedData = async () => {
     const adminUser = await User.create({
       name: 'John Doe',
       email: 'john.doe@biztrack.com',
-      passwordHash: 'hashed_secure_password_123', 
+      password: 'password123', 
       role: 'President Team',
       team: 'Global Sales',
       phone: '+15551234567',
