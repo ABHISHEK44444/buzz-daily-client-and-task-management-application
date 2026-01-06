@@ -52,12 +52,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         body: JSON.stringify(payload),
       });
   
-      const data = await response.json();
-  
       if (!response.ok) {
-        throw new Error(data.error || `Request failed with status ${response.status}`);
+        let errorMessage = `The server responded with a status of ${response.status}.`;
+        try {
+          // Attempt to parse a JSON error response from the backend
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          // If parsing fails, the response was not JSON (e.g., an HTML 404 page).
+          // Provide a more user-friendly error for network/routing issues.
+          console.error("Failed to parse server error response:", jsonError);
+          errorMessage = "Could not connect to the server. Please check the deployment configuration.";
+        }
+        throw new Error(errorMessage);
       }
       
+      const data = await response.json();
       onLogin(data);
   
     } catch (err: any) {
