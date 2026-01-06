@@ -21,11 +21,6 @@
       "config": {
         "includeFiles": ["backend/models/**", "backend/jobs/**"]
       }
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "." }
     }
   ],
   "rewrites": [
