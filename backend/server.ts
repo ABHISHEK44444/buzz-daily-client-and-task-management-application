@@ -1,12 +1,6 @@
-
-
-
-
-
-
-// FIX: Alias Request and Response types from express to resolve conflicts with global DOM types.
-// FIX: Changed express import to a namespace import to resolve type conflicts.
-import * as express from 'express';
+// FIX: Using named imports for Request, Response, and NextFunction from 'express'
+// to avoid conflicts with global DOM types and resolve type errors.
+import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -25,8 +19,11 @@ if (!MONGO_URI) {
   process.exit(1); // Exit with failure code
 }
 
-const app = express.default();
+const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Create a dedicated router for API endpoints
+const apiRouter = express.Router();
 
 // --- Middleware ---
 
@@ -65,42 +62,126 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.default().json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 
-// --- API ROUTES DEFINITION ---
-// We define routes before starting the server.
+// Mount the API router under the /api prefix
+app.use('/api', apiRouter);
 
-// Middleware to find/create user based on email header
-// FIX: Use namespaced express types to avoid conflicts.
-const getUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+
+// --- AUTHENTICATION ROUTES (on apiRouter) ---
+apiRouter.post('/register', async (req: Request, res: Response) => {
+    try {
+        const { name, email, password, role } = req.body;
+        if (!name || !email || !password || !role) {
+            return res.status(400).json({ error: 'Missing required fields: name, email, password, role.' });
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(409).json({ error: 'An account with this email already exists.' });
+        }
+        
+        // SECURITY WARNING: In a real production app, you MUST hash the password.
+        // Storing plaintext passwords is a major security vulnerability.
+        
+        const newUser = await User.create({
+            name,
+            email,
+            password: password, // Storing plaintext password due to project constraints
+            role,
+            status: 'Active',
+            team: 'Independent Admin',
+        });
+
+        res.status(201).json({
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role,
+            team: newUser.team,
+            status: newUser.status,
+            lastLogin: newUser.lastLogin.toLocaleString(),
+            joinedDate: newUser.joinedDate.toISOString().split('T')[0],
+            phone: newUser.phone,
+            bio: newUser.bio,
+            agendaReminderTime: newUser.agendaReminderTime,
+        });
+    } catch (err: any) {
+        console.error('❌ REGISTER ERROR:', err.message);
+        res.status(500).json({ error: 'Server error during registration.' });
+    }
+});
+
+apiRouter.post('/login', async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required.' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ error: 'Account not found. Please verify your email or create a new account.' });
+        }
+
+        // SECURITY WARNING: This is an insecure password comparison.
+        const isMatch = user.password === password;
+
+        if (!isMatch) {
+            return res.status(401).json({ error: 'The password you entered is incorrect. Please try again.' });
+        }
+        
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        res.status(200).json({
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            team: user.team,
+            status: user.status,
+            lastLogin: user.lastLogin.toLocaleString(),
+            joinedDate: user.joinedDate.toISOString().split('T')[0],
+            phone: user.phone,
+            bio: user.bio,
+            agendaReminderTime: user.agendaReminderTime,
+        });
+
+    } catch (err: any) {
+        console.error('❌ LOGIN ERROR:', err.message);
+        res.status(500).json({ error: 'Server error during login.' });
+    }
+});
+
+// Secure middleware to find user based on email header, but does NOT create users.
+const getUser = async (req: Request, res: Response, next: NextFunction) => {
   const customReq = req as any;
   const email = customReq.headers['x-user-email'];
-  if (!email) return res.status(401).json({ error: 'User email required' });
+  if (!email) return res.status(401).json({ error: 'User email header (`x-user-email`) is required for this operation.' });
   
   try {
-    let user = await User.findOne({ email });
+    const user = await User.findOne({ email });
     if (!user) {
-      console.log(`Creating new admin user for: ${email}`);
-      // Create user on the fly for demo simplicity
-      user = await User.create({ 
-        name: email.split('@')[0], 
-        email, 
-        passwordHash: 'default',
-        role: 'Supervisor',
-        status: 'Active'
-      });
+        return res.status(401).json({ error: 'Unauthorized: User not found. Please log in again.' });
     }
     customReq.user = user;
     next();
   } catch (err: any) {
     console.error('❌ AUTH ERROR (500):', err.message || err);
-    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+    res.status(500).json({ error: 'Internal Server Error during user validation', details: err.message });
   }
 };
 
-// User Profile API
-// FIX: Use namespaced express types to avoid conflicts.
-app.patch('/api/user', getUser, async (req: express.Request, res: express.Response) => {
+// User Profile & Session Verification API
+apiRouter.get('/user', getUser, async (req: Request, res: Response) => {
+    const customReq = req as any;
+    // The user object is attached by the getUser middleware.
+    // Exclude password from the returned user object for security.
+    const { password, ...userProfile } = customReq.user.toObject();
+    res.json(userProfile);
+});
+
+apiRouter.patch('/user', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -116,8 +197,7 @@ app.patch('/api/user', getUser, async (req: express.Request, res: express.Respon
 });
 
 // Tasks API
-// FIX: Use namespaced express types to avoid conflicts.
-app.get('/api/tasks', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.get('/tasks', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const tasks = await Task.find({ userId: customReq.user._id }).sort({ dueDate: 1 });
@@ -128,8 +208,7 @@ app.get('/api/tasks', getUser, async (req: express.Request, res: express.Respons
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.post('/api/tasks', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.post('/tasks', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const task = await Task.create({ ...req.body, userId: customReq.user._id });
@@ -140,10 +219,8 @@ app.post('/api/tasks', getUser, async (req: express.Request, res: express.Respon
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.patch('/api/tasks/:id', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.patch('/tasks/:id', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
-  // FIX: Added try-catch block for robust error handling.
   try {
     const task = await Task.findOneAndUpdate(
       { _id: req.params.id, userId: customReq.user._id },
@@ -160,10 +237,8 @@ app.patch('/api/tasks/:id', getUser, async (req: express.Request, res: express.R
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.delete('/api/tasks/:id', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.delete('/tasks/:id', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
-  // FIX: Added try-catch block for robust error handling.
   try {
     const result = await Task.deleteOne({ _id: req.params.id, userId: customReq.user._id });
     if (result.deletedCount === 0) {
@@ -177,8 +252,7 @@ app.delete('/api/tasks/:id', getUser, async (req: express.Request, res: express.
 });
 
 // Follow-ups API
-// FIX: Use namespaced express types to avoid conflicts.
-app.get('/api/followups', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.get('/followups', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const followups = await FollowUp.find({ userId: customReq.user._id }).sort({ nextFollowUpDate: 1 });
@@ -189,10 +263,8 @@ app.get('/api/followups', getUser, async (req: express.Request, res: express.Res
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.post('/api/followups', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.post('/followups', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
-  // FIX: Added try-catch block for robust error handling.
   try {
     const followup = await FollowUp.create({ ...req.body, userId: customReq.user._id });
     res.status(201).json(followup);
@@ -202,10 +274,8 @@ app.post('/api/followups', getUser, async (req: express.Request, res: express.Re
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.patch('/api/followups/:id', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.patch('/followups/:id', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
-  // FIX: Added try-catch block for robust error handling.
   try {
     const followup = await FollowUp.findOneAndUpdate(
       { _id: req.params.id, userId: customReq.user._id },
@@ -222,10 +292,8 @@ app.patch('/api/followups/:id', getUser, async (req: express.Request, res: expre
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.delete('/api/followups/:id', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.delete('/followups/:id', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
-  // FIX: Added try-catch block for robust error handling.
   try {
     const result = await FollowUp.deleteOne({ _id: req.params.id, userId: customReq.user._id });
     if (result.deletedCount === 0) {
@@ -239,8 +307,7 @@ app.delete('/api/followups/:id', getUser, async (req: express.Request, res: expr
 });
 
 // Organization API
-// FIX: Use namespaced express types to avoid conflicts.
-app.get('/api/org', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.get('/org', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const members = await OrgMember.find({ ownerId: customReq.user._id });
@@ -251,8 +318,7 @@ app.get('/api/org', getUser, async (req: express.Request, res: express.Response)
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.post('/api/org', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.post('/org', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.create({ ...req.body, ownerId: customReq.user._id });
@@ -263,8 +329,7 @@ app.post('/api/org', getUser, async (req: express.Request, res: express.Response
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.patch('/api/org/:id', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.patch('/org/:id', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.findOneAndUpdate(
@@ -279,8 +344,7 @@ app.patch('/api/org/:id', getUser, async (req: express.Request, res: express.Res
   }
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.delete('/api/org/:id', getUser, async (req: express.Request, res: express.Response) => {
+apiRouter.delete('/org/:id', getUser, async (req: Request, res: Response) => {
   const customReq = req as any;
   try {
     await OrgMember.deleteOne({ _id: req.params.id, ownerId: customReq.user._id });
@@ -291,14 +355,12 @@ app.delete('/api/org/:id', getUser, async (req: express.Request, res: express.Re
   }
 });
 
-// Base Routes
-// FIX: Use namespaced express types to avoid conflicts.
-app.get('/', (req: express.Request, res: express.Response) => {
+// Base Routes (on the main app)
+app.get('/', (req: Request, res: Response) => {
   res.send('BizTrack API is running...');
 });
 
-// FIX: Use namespaced express types to avoid conflicts.
-app.get('/ping', (req: express.Request, res: express.Response) => {
+app.get('/ping', (req: Request, res: Response) => {
   res.status(200).send('pong');
 });
 
