@@ -1,5 +1,19 @@
 {
   "version": 2,
+  "headers": [
+    {
+      "source": "/(.*\\.tsx)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    },
+    {
+      "source": "/(.*\\.ts)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    }
+  ],
   "builds": [
     {
       "src": "backend/server.ts",
