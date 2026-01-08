@@ -1,4 +1,6 @@
-import express, { Request, Response, NextFunction } from 'express';
+
+
+import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -67,7 +69,7 @@ app.use('/api', apiRouter);
 
 
 // --- AUTHENTICATION ROUTES (on apiRouter) ---
-apiRouter.post('/register', async (req: Request, res: Response) => {
+apiRouter.post('/register', async (req: express.Request, res: express.Response) => {
     try {
         const { name, email, password, role } = req.body;
         if (!name || !email || !password || !role) {
@@ -91,6 +93,18 @@ apiRouter.post('/register', async (req: Request, res: Response) => {
             team: 'Independent Admin',
         });
 
+        // Convert the human-readable role to the OrgLevel enum format
+        const level = role.toUpperCase().replace(/ /g, '_');
+
+        // Automatically create a root node in the organization for the new user
+        await OrgMember.create({
+          ownerId: newUser._id,
+          parentId: null,
+          name: newUser.name,
+          role: newUser.role,
+          level: level,
+        });
+
         res.status(201).json({
             name: newUser.name,
             email: newUser.email,
@@ -109,7 +123,7 @@ apiRouter.post('/register', async (req: Request, res: Response) => {
     }
 });
 
-apiRouter.post('/login', async (req: Request, res: Response) => {
+apiRouter.post('/login', async (req: express.Request, res: express.Response) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
@@ -152,7 +166,7 @@ apiRouter.post('/login', async (req: Request, res: Response) => {
 });
 
 // Secure middleware to find user based on email header, but does NOT create users.
-const getUser = async (req: Request, res: Response, next: NextFunction) => {
+const getUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const customReq = req as any;
   const email = customReq.headers['x-user-email'];
   if (!email) return res.status(401).json({ error: 'User email header (`x-user-email`) is required for this operation.' });
@@ -171,7 +185,7 @@ const getUser = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 // User Profile & Session Verification API
-apiRouter.get('/user', getUser, async (req: Request, res: Response) => {
+apiRouter.get('/user', getUser, async (req: express.Request, res: express.Response) => {
     const customReq = req as any;
     // The user object is attached by the getUser middleware.
     // Exclude password from the returned user object for security.
@@ -179,7 +193,7 @@ apiRouter.get('/user', getUser, async (req: Request, res: Response) => {
     res.json(userProfile);
 });
 
-apiRouter.patch('/user', getUser, async (req: Request, res: Response) => {
+apiRouter.patch('/user', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -195,7 +209,7 @@ apiRouter.patch('/user', getUser, async (req: Request, res: Response) => {
 });
 
 // Change user password
-apiRouter.patch('/user/password', getUser, async (req: Request, res: Response) => {
+apiRouter.patch('/user/password', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   const { currentPassword, newPassword } = req.body;
   const user = customReq.user;
@@ -226,7 +240,7 @@ apiRouter.patch('/user/password', getUser, async (req: Request, res: Response) =
 });
 
 // Tasks API
-apiRouter.get('/tasks', getUser, async (req: Request, res: Response) => {
+apiRouter.get('/tasks', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const tasks = await Task.find({ userId: customReq.user._id }).sort({ dueDate: 1 });
@@ -237,7 +251,7 @@ apiRouter.get('/tasks', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/tasks', getUser, async (req: Request, res: Response) => {
+apiRouter.post('/tasks', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const task = await Task.create({ ...req.body, userId: customReq.user._id });
@@ -248,7 +262,7 @@ apiRouter.post('/tasks', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.patch('/tasks/:id', getUser, async (req: Request, res: Response) => {
+apiRouter.patch('/tasks/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const task = await Task.findOneAndUpdate(
@@ -266,7 +280,7 @@ apiRouter.patch('/tasks/:id', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.delete('/tasks/:id', getUser, async (req: Request, res: Response) => {
+apiRouter.delete('/tasks/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const result = await Task.deleteOne({ _id: req.params.id, userId: customReq.user._id });
@@ -281,7 +295,7 @@ apiRouter.delete('/tasks/:id', getUser, async (req: Request, res: Response) => {
 });
 
 // Follow-ups API
-apiRouter.get('/followups', getUser, async (req: Request, res: Response) => {
+apiRouter.get('/followups', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const followups = await FollowUp.find({ userId: customReq.user._id }).sort({ nextFollowUpDate: 1 });
@@ -292,7 +306,7 @@ apiRouter.get('/followups', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/followups', getUser, async (req: Request, res: Response) => {
+apiRouter.post('/followups', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const followup = await FollowUp.create({ ...req.body, userId: customReq.user._id });
@@ -303,7 +317,7 @@ apiRouter.post('/followups', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.patch('/followups/:id', getUser, async (req: Request, res: Response) => {
+apiRouter.patch('/followups/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const followup = await FollowUp.findOneAndUpdate(
@@ -321,7 +335,7 @@ apiRouter.patch('/followups/:id', getUser, async (req: Request, res: Response) =
   }
 });
 
-apiRouter.delete('/followups/:id', getUser, async (req: Request, res: Response) => {
+apiRouter.delete('/followups/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const result = await FollowUp.deleteOne({ _id: req.params.id, userId: customReq.user._id });
@@ -336,7 +350,7 @@ apiRouter.delete('/followups/:id', getUser, async (req: Request, res: Response) 
 });
 
 // Organization API
-apiRouter.get('/org', getUser, async (req: Request, res: Response) => {
+apiRouter.get('/org', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const members = await OrgMember.find({ ownerId: customReq.user._id });
@@ -347,7 +361,7 @@ apiRouter.get('/org', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.post('/org', getUser, async (req: Request, res: Response) => {
+apiRouter.post('/org', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.create({ ...req.body, ownerId: customReq.user._id });
@@ -358,7 +372,7 @@ apiRouter.post('/org', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.patch('/org/:id', getUser, async (req: Request, res: Response) => {
+apiRouter.patch('/org/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     const member = await OrgMember.findOneAndUpdate(
@@ -373,7 +387,7 @@ apiRouter.patch('/org/:id', getUser, async (req: Request, res: Response) => {
   }
 });
 
-apiRouter.delete('/org/:id', getUser, async (req: Request, res: Response) => {
+apiRouter.delete('/org/:id', getUser, async (req: express.Request, res: express.Response) => {
   const customReq = req as any;
   try {
     await OrgMember.deleteOne({ _id: req.params.id, ownerId: customReq.user._id });
@@ -385,11 +399,11 @@ apiRouter.delete('/org/:id', getUser, async (req: Request, res: Response) => {
 });
 
 // Base Routes (on the main app)
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (req: express.Request, res: express.Response) => {
   res.send('BizTrack API is running...');
 });
 
-app.get('/ping', (req: Request, res: Response) => {
+app.get('/ping', (req: express.Request, res: express.Response) => {
   res.status(200).send('pong');
 });
 
