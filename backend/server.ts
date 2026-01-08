@@ -1,5 +1,4 @@
-// FIX: Explicitly importing Request, Response, and NextFunction from express to avoid
-// conflicts with global DOM types and resolve type errors.
+// FIX: Using qualified types (express.Request, express.Response, etc.) to avoid conflicts with global DOM types and resolve type errors.
 import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -193,6 +192,37 @@ apiRouter.patch('/user', getUser, async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('❌ USER UPDATE ERROR:', err.message);
     res.status(500).json({ error: 'Failed to update user profile' });
+  }
+});
+
+// Change user password
+apiRouter.patch('/user/password', getUser, async (req: Request, res: Response) => {
+  const customReq = req as any;
+  const { currentPassword, newPassword } = req.body;
+  const user = customReq.user;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new passwords are required.' });
+  }
+
+  // SECURITY WARNING: This is an insecure plaintext password comparison.
+  // In a real production app, use a secure hashing algorithm like bcrypt.
+  if (user.password !== currentPassword) {
+    return res.status(401).json({ error: 'The current password you entered is incorrect.' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+  }
+
+  try {
+    // SECURITY WARNING: Store hashed passwords in production.
+    user.password = newPassword;
+    await user.save();
+    res.status(200).json({ message: 'Password updated successfully.' });
+  } catch (err: any) {
+    console.error('❌ PASSWORD UPDATE ERROR:', err.message);
+    res.status(500).json({ error: 'Server error: Failed to update password.' });
   }
 });
 
