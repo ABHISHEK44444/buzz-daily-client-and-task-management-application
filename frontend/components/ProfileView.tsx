@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
 import { Button } from './Button';
 import { PhoneInput } from './PhoneInput';
 import { Modal } from './Modal';
+import { apiFetch } from '../services/api.ts';
 
 interface ProfileViewProps {
   user: UserProfile;
@@ -16,7 +16,7 @@ const HIERARCHY_LEVELS = [
   'World Team',
   'Active World Team',
   'GET',
-  'GET 2500',
+  'GET 2000',
   'Millionaire Team',
   'Millionaire Team 7500',
   'President Team',
@@ -35,11 +35,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUser, on
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const [passwordForm, setPasswordForm] = useState({
-    current: '',
-    new: '',
-    confirm: ''
-  });
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const inputClasses = "block w-full rounded-lg border-slate-300 bg-white text-slate-800 px-4 py-2.5 focus:border-accent focus:ring-accent transition-colors shadow-sm text-sm disabled:bg-slate-50 disabled:text-slate-500";
   const labelClasses = "block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5";
@@ -50,21 +47,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUser, on
     setIsEditing(false);
   };
 
-  const handlePasswordChangeSubmit = (e: React.FormEvent) => {
+  const handlePasswordChangeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordError(null);
+
     if (passwordForm.new !== passwordForm.confirm) {
-      alert("New passwords do not match!");
+      setPasswordError("New passwords do not match.");
       return;
     }
-    // Mocking the password change logic
-    onUpdateUser({ ...formData, password: passwordForm.new, passwordLastChanged: 'Just now' });
-    setIsChangingPassword(false);
-    setPasswordForm({ current: '', new: '', confirm: '' });
-    // Reset visibility states
-    setShowCurrentPassword(false);
-    setShowNewPassword(false);
-    setShowConfirmPassword(false);
-    alert("Password updated successfully.");
+    if (passwordForm.new.length < 8) {
+      setPasswordError("New password must be at least 8 characters long.");
+      return;
+    }
+
+    try {
+      await apiFetch('/api/user/password', user.email, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currentPassword: passwordForm.current,
+          newPassword: passwordForm.new,
+        }),
+      });
+      
+      alert("Password updated successfully.");
+      setIsChangingPassword(false);
+      setPasswordForm({ current: '', new: '', confirm: '' });
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      // You might want to refresh user data here if `passwordLastChanged` is important
+    } catch (err: any) {
+      setPasswordError(err.message || "An unknown error occurred during password update.");
+    }
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,7 +219,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUser, on
                     </h3>
                     <button 
                       onClick={() => {
-                        setPasswordForm({ ...passwordForm, current: user.password || '' });
+                        setPasswordForm({ current: '', new: '', confirm: '' });
+                        setPasswordError(null);
                         setIsChangingPassword(true);
                       }}
                       className="text-xs font-bold text-accent hover:underline focus:outline-none"
@@ -324,7 +339,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUser, on
         title="Update Account Security"
       >
         <form onSubmit={handlePasswordChangeSubmit} className="space-y-5 pt-2">
-          <p className="text-sm text-slate-500 mb-4">Protect your business environment with a strong security token.</p>
+          {passwordError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg flex items-start gap-2">
+              <i className="fa-solid fa-circle-exclamation mt-0.5"></i>
+              <span>{passwordError}</span>
+            </div>
+          )}
+          <p className="text-sm text-slate-500">Protect your business environment with a strong security token.</p>
           
           <div className="space-y-1">
             <label className={labelClasses}>Current Password</label>
