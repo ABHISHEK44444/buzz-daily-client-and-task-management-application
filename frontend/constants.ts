@@ -1,6 +1,6 @@
 
 
-import { Priority, Status, Task, FollowUp, ClientType, Frequency, OrgNode, UserProfile } from './types';
+import { Status, Task, FollowUp, ClientType, Frequency, OrgNode, UserProfile } from './types';
 
 export const INITIAL_TASKS: Task[] = [
   {
@@ -39,7 +39,6 @@ export const INITIAL_FOLLOW_UPS: FollowUp[] = [
     notes: 'Discussed the premium enterprise plan. Needs a custom quote.',
     status: Status.PENDING,
     avatarUrl: 'https://picsum.photos/100/100?random=1',
-    priority: Priority.HIGH,
   },
   {
     id: '102',
@@ -53,7 +52,6 @@ export const INITIAL_FOLLOW_UPS: FollowUp[] = [
     notes: 'Met at the networking event. Interested in partnership opportunities.',
     status: Status.IN_PROGRESS,
     avatarUrl: 'https://picsum.photos/100/100?random=2',
-    priority: Priority.MEDIUM,
   },
   {
     id: '103',
@@ -67,7 +65,6 @@ export const INITIAL_FOLLOW_UPS: FollowUp[] = [
     notes: 'Signed contract. Check in on onboarding progress.',
     status: Status.PENDING,
     avatarUrl: 'https://picsum.photos/100/100?random=3',
-    priority: Priority.LOW,
   },
 ];
 
