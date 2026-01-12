@@ -1,9 +1,10 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { FollowUp, Status, Priority, ClientType } from '../types.ts';
-import { Button } from './Button.tsx';
-import { Modal } from './Modal.tsx';
-import { DatePicker } from './DatePicker.tsx';
+import { FollowUp, Status, Priority, ClientType } from '../types';
+import { Button } from './Button';
+import { Modal } from './Modal';
+import { DatePicker } from './DatePicker';
 
 interface FollowUpCardProps {
   followUp: FollowUp;
@@ -136,7 +137,6 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
              </div>
              <div>
                <h4 className="font-bold text-slate-900 text-xl leading-tight lowercase">{followUp.clientName}</h4>
-               <p className="text-sm font-medium text-slate-500 lowercase">{followUp.company || 'no company'}</p>
              </div>
           </div>
           <div className="flex flex-col items-end gap-2">
