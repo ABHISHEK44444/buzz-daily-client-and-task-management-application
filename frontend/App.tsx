@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ViewState, Task, FollowUp, Status, Priority, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
+import { ViewState, Task, FollowUp, Status, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
 import { INITIAL_TASKS, INITIAL_FOLLOW_UPS, INITIAL_ORG_DATA, INITIAL_USER_PROFILE } from './constants';
 import { apiFetch } from './services/api';
 import { FollowUpCard } from './components/FollowUpCard';
@@ -64,7 +64,7 @@ const App: React.FC = () => {
 
   const [newFollowUp, setNewFollowUp] = useState<Partial<FollowUp>>({
     clientName: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
-    frequency: Frequency.WEEKLY, priority: Priority.MEDIUM, notes: '',
+    frequency: Frequency.WEEKLY, notes: '',
     nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
   });
 
@@ -305,7 +305,7 @@ const App: React.FC = () => {
     setEditingFollowUp(null);
     setNewFollowUp({
       clientName: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
-      frequency: Frequency.WEEKLY, priority: Priority.MEDIUM, notes: '',
+      frequency: Frequency.WEEKLY, notes: '',
       nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
     });
   };
@@ -555,7 +555,7 @@ const App: React.FC = () => {
                       <div className="space-y-6">
                         <div className="flex items-center justify-start gap-4 border-l-4 border-accent pl-4"><h4 className="text-xl font-bold text-slate-900">Outreach List</h4><button onClick={() => navigateTo(ViewState.FOLLOW_UPS)} className="text-sm font-bold text-accent hover:underline">View All</button></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {getTodaysCalls().map(f => (<FollowUpCard key={f.id} followUp={f} onStatusChange={handleFollowUpStatusChange} onPriorityChange={() => {}} onCompleteCycle={handleCompleteFollowUpCycle} onDelete={handleDeleteFollowUp} onEdit={() => { setEditingFollowUp(f); }} />))}
+                          {getTodaysCalls().map(f => (<FollowUpCard key={f.id} followUp={f} onStatusChange={handleFollowUpStatusChange} onCompleteCycle={handleCompleteFollowUpCycle} onDelete={handleDeleteFollowUp} onEdit={() => { setEditingFollowUp(f); }} />))}
                           {getTodaysCalls().length === 0 && (<div className="md:col-span-2 py-16 px-4 bg-white/50 border-2 border-dashed border-slate-200 rounded-3xl text-center"><p className="font-bold text-slate-500">No scheduled calls for today.</p></div>)}
                         </div>
                       </div>
@@ -606,7 +606,6 @@ const App: React.FC = () => {
                         key={f.id} 
                         followUp={f} 
                         onStatusChange={handleFollowUpStatusChange} 
-                        onPriorityChange={() => {}} 
                         onCompleteCycle={handleCompleteFollowUpCycle} 
                         onDelete={handleDeleteFollowUp} 
                         onEdit={() => { setEditingFollowUp(f); }} 
@@ -696,7 +695,6 @@ const App: React.FC = () => {
                                     </span>
                                  </td>
                                  <td className="px-6 py-5">
-                                    <div className="flex flex-col gap-1.5">
                                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase w-fit ${
                                           f.status === Status.PENDING ? 'bg-slate-100 text-slate-600' :
                                           f.status === Status.IN_PROGRESS ? 'bg-orange-50 text-orange-600' :
@@ -704,13 +702,6 @@ const App: React.FC = () => {
                                        }`}>
                                           {f.status}
                                        </span>
-                                       <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border w-fit ${
-                                          f.priority === Priority.HIGH ? 'bg-red-50 text-red-600 border-red-100' :
-                                          f.priority === Priority.MEDIUM ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'
-                                       }`}>
-                                          {f.priority}
-                                       </span>
-                                    </div>
                                  </td>
                                  <td className="px-6 py-5">
                                     <div className="flex flex-col">
@@ -775,7 +766,6 @@ const App: React.FC = () => {
                   <div className="flex-1 min-w-0">
                      <p className="font-bold text-slate-900 text-sm truncate">{c.clientName}</p>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${c.priority === Priority.HIGH ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-200 text-slate-600 border-slate-300'}`}>{c.priority}</div>
                </div>
              ))}
           </div>
@@ -876,10 +866,7 @@ const App: React.FC = () => {
             <div className="space-y-1"><label className={labelClasses}>Phone Number</label><PhoneInput required value={newFollowUp.mobile || ''} onChange={v => setNewFollowUp({...newFollowUp, mobile: v})} /></div>
           </div>
           <div className="space-y-1"><label className={labelClasses}>Email</label><input type="email" className={inputClasses} value={newFollowUp.email || ''} onChange={e => setNewFollowUp({...newFollowUp, email: e.target.value})} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1"><label className={labelClasses}>Client Type</label><select className={inputClasses} value={newFollowUp.clientType} onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}>{Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
-            <div className="space-y-1"><label className={labelClasses}>Priority</label><select className={inputClasses} value={newFollowUp.priority} onChange={e => setNewFollowUp({...newFollowUp, priority: e.target.value as Priority})}>{Object.values(Priority).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
-          </div>
+          <div className="space-y-1"><label className={labelClasses}>Client Type</label><select className={inputClasses} value={newFollowUp.clientType} onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}>{Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
           <div className="space-y-1"><label className={labelClasses}>Next Follow-up Date</label><DatePicker value={newFollowUp.nextFollowUpDate || ''} onChange={e => setNewFollowUp({...newFollowUp, nextFollowUpDate: e.target.value})} /></div>
           <div className="space-y-1"><label className={labelClasses}>Notes</label><textarea className={inputClasses} value={newFollowUp.notes || ''} onChange={e => setNewFollowUp({...newFollowUp, notes: e.target.value})} /></div>
           <div className="pt-4 flex justify-end gap-3"><Button variant="ghost" type="button" onClick={handleCloseFollowUpModal}>Cancel</Button><Button type="submit">{editingFollowUp ? 'Save Changes' : 'Create'}</Button></div>
