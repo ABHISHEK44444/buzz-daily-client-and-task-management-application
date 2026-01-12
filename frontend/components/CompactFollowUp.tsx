@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FollowUp, Priority, ClientType } from '../types';
+import { FollowUp, ClientType } from '../types';
 import { Button } from './Button';
 
 interface CompactFollowUpProps {
@@ -11,14 +11,6 @@ interface CompactFollowUpProps {
 }
 
 export const CompactFollowUp: React.FC<CompactFollowUpProps> = ({ followUp, onMarkDone, onSelect, isActive }) => {
-  const getPriorityColor = (p: Priority) => {
-    switch (p) {
-      case Priority.HIGH: return 'bg-red-500';
-      case Priority.MEDIUM: return 'bg-orange-500';
-      case Priority.LOW: return 'bg-blue-500';
-      default: return 'bg-slate-300';
-    }
-  };
 
   const getWhatsAppLink = (mobile: string) => {
     const cleanNumber = mobile.replace(/\D/g, '');
@@ -51,7 +43,6 @@ export const CompactFollowUp: React.FC<CompactFollowUpProps> = ({ followUp, onMa
             <span className="text-xs font-bold text-slate-500">{followUp.clientName.charAt(0)}</span>
           )}
         </div>
-        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${getPriorityColor(followUp.priority)}`}></div>
       </div>
 
       <div className="flex-1 min-w-0">
@@ -61,7 +52,8 @@ export const CompactFollowUp: React.FC<CompactFollowUpProps> = ({ followUp, onMa
           </h4>
           <i className={`fa-solid ${getClientTypeIcon(followUp.clientType)} text-[10px]`}></i>
         </div>
-        <p className="text-[10px] text-slate-500 truncate">{followUp.company}</p>
+        {/* FIX: Property 'company' does not exist on type 'FollowUp'. Replaced with 'notes'. */}
+        <p className="text-[10px] text-slate-500 truncate">{followUp.notes}</p>
       </div>
 
       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
