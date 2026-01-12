@@ -39,8 +39,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const getItemsForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayTasks = tasks.filter(t => t.dueDate === dateStr && t.status !== Status.COMPLETED && t.status !== Status.ARCHIVED);
-    const dayCalls = followUps.filter(f => f.nextFollowUpDate === dateStr && f.status !== Status.COMPLETED && f.status !== Status.ARCHIVED);
-    return { dateStr, tasks: dayTasks, calls: dayCalls, total: dayTasks.length + dayCalls.length };
+    
+    const allDayCalls = followUps.filter(f => f.nextFollowUpDate === dateStr && f.status !== Status.COMPLETED && f.status !== Status.ARCHIVED);
+    const pendingCalls = allDayCalls.filter(c => c.status === Status.PENDING);
+    const inProgressCalls = allDayCalls.filter(c => c.status === Status.IN_PROGRESS);
+
+    return { 
+        dateStr, 
+        tasks: dayTasks, 
+        pendingCalls,
+        inProgressCalls,
+        total: dayTasks.length + allDayCalls.length 
+    };
   };
 
   const renderDays = () => {
@@ -56,7 +66,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      const { dateStr, tasks: dayTasks, calls: dayCalls, total } = getItemsForDay(day);
+      const { dateStr, tasks: dayTasks, pendingCalls, inProgressCalls, total } = getItemsForDay(day);
       const isToday = dateStr === todayStr;
 
       let bgClass = "bg-white hover:bg-slate-50";
@@ -67,28 +77,34 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div 
           key={day} 
           onClick={() => setSelectedDay(dateStr)}
-          className={`min-h-[90px] sm:min-h-[120px] p-1 sm:p-2 border-b border-r border-slate-200 cursor-pointer transition-all flex flex-col items-center sm:items-start relative ${bgClass}`}
+          className={`min-h-[90px] sm:min-h-[120px] p-1 sm:p-2 border-b border-r border-slate-200 cursor-pointer transition-all flex flex-col items-start relative ${bgClass}`}
         >
-          <div className="flex items-center justify-center sm:justify-between w-full mb-1 sm:mb-2">
+          <div className="flex items-center justify-between w-full mb-1 sm:mb-2">
              <div className={`
                text-xs sm:text-sm font-black w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full transition-colors shrink-0
                ${isToday ? 'bg-accent text-white shadow-md shadow-accent/20' : 'text-slate-700'}
              `}>
                {day}
              </div>
-             
-             {dayTasks.length > 0 && (
-               <div className="absolute top-1 right-1 sm:static flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 bg-slate-800 text-white rounded-full text-[9px] sm:text-[10px] font-black shadow-sm shrink-0">
-                 {dayTasks.length}
-               </div>
-             )}
           </div>
           
-          <div className="flex flex-col items-center sm:items-start w-full gap-1 mt-auto pb-1">
-              {dayCalls.length > 0 && (
-                  <div className="flex items-center gap-1 text-slate-700 bg-white/90 py-0.5 px-1.5 rounded-lg border border-slate-100 shadow-sm w-fit min-w-[32px] justify-center">
-                      <i className="fa-solid fa-phone text-accent text-[9px]"></i>
-                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{dayCalls.length}</span>
+          <div className="flex flex-col items-start w-full gap-1 mt-auto pb-1">
+              {dayTasks.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-purple-700 bg-purple-50 py-0.5 px-1.5 rounded-md border border-purple-100 shadow-sm w-fit" title={`${dayTasks.length} task(s) due`}>
+                      <i className="fa-solid fa-list-check text-[9px]"></i>
+                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{dayTasks.length}</span>
+                  </div>
+              )}
+              {pendingCalls.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-slate-700 bg-slate-100 py-0.5 px-1.5 rounded-md border border-slate-200 shadow-sm w-fit" title={`${pendingCalls.length} pending call(s)`}>
+                      <i className="fa-solid fa-phone text-slate-400 text-[9px]"></i>
+                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{pendingCalls.length}</span>
+                  </div>
+              )}
+              {inProgressCalls.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-orange-700 bg-orange-50 py-0.5 px-1.5 rounded-md border border-orange-100 shadow-sm w-fit" title={`${inProgressCalls.length} in-progress call(s)`}>
+                      <i className="fa-solid fa-phone-volume text-orange-500 text-[9px]"></i>
+                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{inProgressCalls.length}</span>
                   </div>
               )}
           </div>
@@ -165,9 +181,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
 
       <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-400 justify-center px-4">
-          <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-100 border border-emerald-200"></span> Light Load (1-5)</div>
-          <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-200"></span> Medium Load (6-10)</div>
-          <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-red-100 border border-red-200"></span> Heavy Load (10+)</div>
+          <div className="flex items-center gap-2"><i className="fa-solid fa-list-check text-purple-700"></i> Task Due</div>
+          <div className="flex items-center gap-2"><i className="fa-solid fa-phone text-slate-500"></i> Pending Call</div>
+          <div className="flex items-center gap-2"><i className="fa-solid fa-phone-volume text-orange-500"></i> In-Progress Call</div>
       </div>
 
       <Modal isOpen={!!selectedDay && !rescheduleItem} onClose={() => setSelectedDay(null)} title={selectedDay ? new Date(selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}>
