@@ -1,4 +1,5 @@
 
+
 export enum Priority {
   HIGH = 'High',
   MEDIUM = 'Medium',
@@ -37,7 +38,6 @@ export interface Task {
 export interface FollowUp {
   id: string;
   clientName: string;
-  company: string;
   mobile: string;
   clientType: ClientType;
   frequency: Frequency;
