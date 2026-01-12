@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Task, FollowUp, Status, Priority, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
 import { INITIAL_TASKS, INITIAL_FOLLOW_UPS, INITIAL_ORG_DATA, INITIAL_USER_PROFILE } from './constants';
@@ -62,7 +63,7 @@ const App: React.FC = () => {
   const [memberForm, setMemberForm] = useState({ name: '', role: '', level: 'SUPERVISOR' as OrgLevel });
 
   const [newFollowUp, setNewFollowUp] = useState<Partial<FollowUp>>({
-    clientName: '', company: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
+    clientName: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
     frequency: Frequency.WEEKLY, priority: Priority.MEDIUM, notes: '',
     nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
   });
@@ -128,28 +129,6 @@ const App: React.FC = () => {
       setIsAddingFollowUp(true);
     }
   }, [editingFollowUp]);
-
-  // Keep-alive ping to prevent the Render backend from spinning down
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const keepAliveInterval = setInterval(async () => {
-      try {
-        // The /ping endpoint is lightweight and designed for this purpose.
-        await apiFetch('/ping');
-        console.log('✅ Backend keep-alive ping successful.');
-      } catch (error) {
-        // Silently fail without disturbing the user.
-        // This might happen if the user goes offline or the server is truly down.
-        console.warn('Backend keep-alive ping failed. The server might be offline or unreachable.');
-      }
-    }, 10 * 60 * 1000); // Ping every 10 minutes to be safe
-
-    // Cleanup on component unmount or when user logs out
-    return () => {
-      clearInterval(keepAliveInterval);
-    };
-  }, [isAuthenticated]);
 
   const buildOrgTree = (members: any[]): OrgNode | null => {
     if (!members || members.length === 0) return null;
@@ -325,7 +304,7 @@ const App: React.FC = () => {
     setIsAddingFollowUp(false);
     setEditingFollowUp(null);
     setNewFollowUp({
-      clientName: '', company: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
+      clientName: '', mobile: '', email: '', clientType: ClientType.PROSPECT,
       frequency: Frequency.WEEKLY, priority: Priority.MEDIUM, notes: '',
       nextFollowUpDate: new Date().toISOString().split('T')[0], status: Status.PENDING
     });
@@ -443,7 +422,7 @@ const App: React.FC = () => {
 
   const filteredFollowUps = useMemo(() => {
     return followUps.filter(f => {
-      const matchesSearch = f.clientName.toLowerCase().includes(dbSearch.toLowerCase()) || f.company.toLowerCase().includes(dbSearch.toLowerCase());
+      const matchesSearch = f.clientName.toLowerCase().includes(dbSearch.toLowerCase());
       const matchesType = dbTypeFilter === 'All' || f.clientType === dbTypeFilter;
       const matchesStatus = dbStatusFilter === 'All' || f.status === dbStatusFilter;
       return matchesSearch && matchesType && matchesStatus;
@@ -701,7 +680,6 @@ const App: React.FC = () => {
                                        </div>
                                        <div>
                                           <p className="text-sm font-bold text-slate-900 leading-none">{f.clientName}</p>
-                                          <p className="text-[11px] text-slate-500 mt-1">{f.company}</p>
                                        </div>
                                     </div>
                                  </td>
@@ -796,7 +774,6 @@ const App: React.FC = () => {
                   <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xs shadow-sm">{c.clientName.charAt(0)}</div>
                   <div className="flex-1 min-w-0">
                      <p className="font-bold text-slate-900 text-sm truncate">{c.clientName}</p>
-                     <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">{c.company}</p>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${c.priority === Priority.HIGH ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-200 text-slate-600 border-slate-300'}`}>{c.priority}</div>
                </div>
@@ -898,10 +875,7 @@ const App: React.FC = () => {
             <div className="space-y-1"><label className={labelClasses}>Full Name</label><input required type="text" className={inputClasses} value={newFollowUp.clientName} onChange={e => setNewFollowUp({...newFollowUp, clientName: e.target.value})} /></div>
             <div className="space-y-1"><label className={labelClasses}>Phone Number</label><PhoneInput required value={newFollowUp.mobile || ''} onChange={v => setNewFollowUp({...newFollowUp, mobile: v})} /></div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1"><label className={labelClasses}>Company</label><input type="text" className={inputClasses} value={newFollowUp.company} onChange={e => setNewFollowUp({...newFollowUp, company: e.target.value})} /></div>
-            <div className="space-y-1"><label className={labelClasses}>Email</label><input type="email" className={inputClasses} value={newFollowUp.email || ''} onChange={e => setNewFollowUp({...newFollowUp, email: e.target.value})} /></div>
-          </div>
+          <div className="space-y-1"><label className={labelClasses}>Email</label><input type="email" className={inputClasses} value={newFollowUp.email || ''} onChange={e => setNewFollowUp({...newFollowUp, email: e.target.value})} /></div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1"><label className={labelClasses}>Client Type</label><select className={inputClasses} value={newFollowUp.clientType} onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}>{Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
             <div className="space-y-1"><label className={labelClasses}>Priority</label><select className={inputClasses} value={newFollowUp.priority} onChange={e => setNewFollowUp({...newFollowUp, priority: e.target.value as Priority})}>{Object.values(Priority).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
