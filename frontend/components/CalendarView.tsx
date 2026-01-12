@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { Task, FollowUp, Status, Priority } from '../types';
+// FIX: Removed unused 'Priority' type import which is not exported from '../types'.
+import { Task, FollowUp, Status } from '../types';
 import { Modal } from './Modal';
 import { DatePicker } from './DatePicker';
 import { Button } from './Button';
