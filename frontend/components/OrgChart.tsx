@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { OrgNode, OrgLevel } from '../types';
 import { Button } from './Button';
@@ -8,9 +9,10 @@ interface TreeNodeProps {
   onAdd: (parentId: string) => void;
   onEdit: (node: OrgNode) => void;
   onDelete: (nodeId: string) => void;
+  isRoot?: boolean;
 }
 
-const TreeNode: React.FC<TreeNodeProps> = ({ node, onAdd, onEdit, onDelete }) => {
+const TreeNode: React.FC<TreeNodeProps> = ({ node, onAdd, onEdit, onDelete, isRoot }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
 
@@ -89,13 +91,15 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, onAdd, onEdit, onDelete }) =>
                 >
                     <i className="fa-solid fa-pen text-[10px] block"></i>
                 </button>
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onDelete(node.id); }}
-                    className="w-8 h-8 rounded-full bg-white text-slate-600 border border-slate-200 shadow-xl flex items-center justify-center hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95"
-                    title="Delete Member"
-                >
-                    <i className="fa-solid fa-trash text-[10px] block"></i>
-                </button>
+                {!isRoot && (
+                  <button 
+                      onClick={(e) => { e.stopPropagation(); onDelete(node.id); }}
+                      className="w-8 h-8 rounded-full bg-white text-slate-600 border border-slate-200 shadow-xl flex items-center justify-center hover:bg-red-600 hover:text-white hover:border-red-600 transition-all active:scale-95"
+                      title="Delete Member"
+                  >
+                      <i className="fa-solid fa-trash text-[10px] block"></i>
+                  </button>
+                )}
                 <button
                     onClick={(e) => { e.stopPropagation(); onAdd(node.id); setIsExpanded(true); }}
                     className="w-8 h-8 rounded-full bg-white text-slate-600 border border-slate-200 shadow-xl flex items-center justify-center hover:bg-accent hover:text-white hover:border-accent transition-all active:scale-95"
@@ -181,6 +185,7 @@ export const OrgChart: React.FC<OrgChartProps> = ({ data, onAddNode, onEditNode,
                             onAdd={onAddNode}
                             onEdit={onEditNode}
                             onDelete={onDeleteNode}
+                            isRoot={true}
                         />
                     </ul>
                 </div>
