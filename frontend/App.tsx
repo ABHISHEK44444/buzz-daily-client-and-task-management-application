@@ -192,6 +192,39 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated, currentUser]);
 
+  const handleUpdateUser = async (updatedProfile: UserProfile) => {
+    if (!currentUser || !orgData) return;
+
+    setIsLoading(true);
+    try {
+      // API call to update the user profile
+      await apiFetch('/api/user', currentUser.email, {
+        method: 'PATCH',
+        body: JSON.stringify(updatedProfile),
+      });
+
+      // API call to update the corresponding root org member
+      const newLevel = updatedProfile.role.toUpperCase().replace(/ /g, '_') as OrgLevel;
+      await apiFetch(`/api/org/${orgData.id}`, currentUser.email, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: updatedProfile.name,
+          role: updatedProfile.role,
+          level: newLevel,
+        }),
+      });
+
+      // Refresh all data from the backend to ensure UI consistency
+      await loadData();
+      alert('Profile updated successfully!');
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      alert(`Error updating profile: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Task Actions
   const handleAddTask = async (newTask: Omit<Task, 'id'>) => {
     if (!currentUser) return;
@@ -751,7 +784,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {currentView === ViewState.PROFILE && (<div className="p-4 sm:p-8"><ProfileView user={currentUser} onUpdateUser={() => {}} onLogout={handleLogout} /></div>)}
+          {currentView === ViewState.PROFILE && (<div className="p-4 sm:p-8"><ProfileView user={currentUser} onUpdateUser={handleUpdateUser} onLogout={handleLogout} /></div>)}
         </main>
       </div>
 
