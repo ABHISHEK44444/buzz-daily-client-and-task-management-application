@@ -1,11 +1,5 @@
 
 
-export enum Priority {
-  HIGH = 'High',
-  MEDIUM = 'Medium',
-  LOW = 'Low',
-}
-
 export enum Status {
   PENDING = 'Pending',
   IN_PROGRESS = 'In Progress',
@@ -47,7 +41,6 @@ export interface FollowUp {
   status: Status;
   email: string;
   avatarUrl?: string;
-  priority: Priority;
 }
 
 export type OrgLevel = 
