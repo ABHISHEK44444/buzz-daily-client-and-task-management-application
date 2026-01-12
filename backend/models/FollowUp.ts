@@ -1,10 +1,10 @@
 
+
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IFollowUp extends Document {
   userId: mongoose.Types.ObjectId;
   clientName: string;
-  company: string;
   mobile: string;
   email: string;
   clientType: 'Prospect' | 'User' | 'Associate';
@@ -20,7 +20,6 @@ export interface IFollowUp extends Document {
 const FollowUpSchema: Schema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   clientName: { type: String, required: true },
-  company: { type: String },
   mobile: { type: String, required: true },
   email: { type: String },
   clientType: { type: String, enum: ['Prospect', 'User', 'Associate'], default: 'Prospect' },
