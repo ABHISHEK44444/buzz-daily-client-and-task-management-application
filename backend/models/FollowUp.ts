@@ -9,7 +9,6 @@ export interface IFollowUp extends Document {
   email: string;
   clientType: 'Prospect' | 'User' | 'Associate';
   frequency: 'Daily' | 'Weekly' | 'Every 2 Weeks' | 'Monthly';
-  priority: 'High' | 'Medium' | 'Low';
   status: 'Pending' | 'In Progress' | 'Completed' | 'Archived';
   lastContactDate: Date;
   nextFollowUpDate: Date;
@@ -24,7 +23,6 @@ const FollowUpSchema: Schema = new Schema({
   email: { type: String },
   clientType: { type: String, enum: ['Prospect', 'User', 'Associate'], default: 'Prospect' },
   frequency: { type: String, enum: ['Daily', 'Weekly', 'Every 2 Weeks', 'Monthly'], default: 'Weekly' },
-  priority: { type: String, enum: ['High', 'Medium', 'Low'], default: 'Medium' },
   status: { type: String, enum: ['Pending', 'In Progress', 'Completed', 'Archived'], default: 'Pending' },
   lastContactDate: { type: Date },
   nextFollowUpDate: { type: Date, required: true },
