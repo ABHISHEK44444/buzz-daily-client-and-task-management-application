@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { FollowUp, Status, Priority, ClientType } from '../types';
+import { FollowUp, Status, ClientType } from '../types';
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { DatePicker } from './DatePicker';
@@ -9,7 +9,6 @@ import { DatePicker } from './DatePicker';
 interface FollowUpCardProps {
   followUp: FollowUp;
   onStatusChange: (id: string, status: Status) => void;
-  onPriorityChange: (id: string, priority: Priority) => void;
   onCompleteCycle: (id: string, nextDate: string, nextNotes: string, changes?: { status?: Status, clientType?: ClientType }) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
@@ -17,15 +16,11 @@ interface FollowUpCardProps {
 
 type CallOutcome = 'CONNECTED' | 'VOICEMAIL' | 'SALE' | 'WRONG' | null;
 
-export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusChange, onPriorityChange, onCompleteCycle, onDelete, onEdit }) => {
+export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusChange, onCompleteCycle, onDelete, onEdit }) => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<CallOutcome>(null);
   const [outcomeDate, setOutcomeDate] = useState('');
   const [outcomeNotes, setOutcomeNotes] = useState('');
-
-  const priorityColorClass = followUp.priority === Priority.HIGH ? 'border-l-[10px] border-l-red-500' : 
-                            followUp.priority === Priority.MEDIUM ? 'border-l-[10px] border-l-orange-500' :
-                            'border-l-[10px] border-l-blue-400';
 
   const formatDisplayDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -125,7 +120,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
 
   return (
     <>
-      <div className={`bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all ${priorityColorClass} flex flex-col h-full relative overflow-hidden`}>
+      <div className={`bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all flex flex-col h-full relative overflow-hidden`}>
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-4">
              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm ring-1 ring-slate-100">
@@ -143,17 +138,6 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
             <span className="text-[10px] font-black px-3 py-1 bg-blue-50 text-accent border border-blue-100 rounded-md uppercase tracking-wider">
               {followUp.clientType}
             </span>
-            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 py-1 shadow-sm">
-               <i className={`fa-solid ${followUp.priority === Priority.HIGH ? 'fa-fire text-red-500' : 'fa-bell text-orange-400'} text-[11px]`}></i>
-               <select 
-                 className="text-[11px] font-black text-slate-700 uppercase bg-transparent border-none p-0 focus:ring-0 cursor-pointer outline-none"
-                 value={followUp.priority}
-                 onChange={(e) => onPriorityChange(followUp.id, e.target.value as Priority)}
-               >
-                 {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
-               </select>
-               <i className="fa-solid fa-chevron-down text-[8px] text-slate-400"></i>
-            </div>
           </div>
         </div>
 
