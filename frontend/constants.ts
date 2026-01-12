@@ -1,4 +1,5 @@
 
+
 import { Priority, Status, Task, FollowUp, ClientType, Frequency, OrgNode, UserProfile } from './types';
 
 export const INITIAL_TASKS: Task[] = [
@@ -29,7 +30,6 @@ export const INITIAL_FOLLOW_UPS: FollowUp[] = [
   {
     id: '101',
     clientName: 'Sarah Jenkins',
-    company: 'TechFlow Solutions',
     mobile: '+1 (555) 123-4567',
     clientType: ClientType.PROSPECT,
     frequency: Frequency.WEEKLY,
@@ -44,7 +44,6 @@ export const INITIAL_FOLLOW_UPS: FollowUp[] = [
   {
     id: '102',
     clientName: 'Michael Chang',
-    company: 'Chang & Partners',
     mobile: '+1 (555) 987-6543',
     clientType: ClientType.ASSOCIATE,
     frequency: Frequency.MONTHLY,
@@ -59,7 +58,6 @@ export const INITIAL_FOLLOW_UPS: FollowUp[] = [
   {
     id: '103',
     clientName: 'Elara Vane',
-    company: 'Solaris Inc.',
     mobile: '+1 (555) 456-7890',
     clientType: ClientType.USER,
     frequency: Frequency.BIWEEKLY,
