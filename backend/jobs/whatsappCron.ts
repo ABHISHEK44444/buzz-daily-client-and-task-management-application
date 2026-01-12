@@ -1,4 +1,5 @@
 
+
 import cron from 'node-cron';
 import User from '../models/User.js';
 import FollowUp from '../models/FollowUp.js';
@@ -38,7 +39,7 @@ export const initCronJobs = () => {
           userId: user._id,
           nextFollowUpDate: { $gte: startOfDay, $lte: endOfDay },
           status: { $in: ['Pending', 'In Progress'] }
-        }).sort({ priority: 1, clientName: 1 });
+        }).sort({ clientName: 1 });
 
         if (todaysCalls.length === 0) continue;
 
