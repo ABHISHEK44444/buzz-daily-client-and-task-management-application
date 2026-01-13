@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Task, FollowUp, Status, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
 import { INITIAL_TASKS, INITIAL_FOLLOW_UPS, INITIAL_ORG_DATA, INITIAL_USER_PROFILE } from './constants';
@@ -486,6 +485,8 @@ const App: React.FC = () => {
 
   const inputClasses = "block w-full rounded-lg border-slate-200 bg-slate-50 text-slate-800 px-4 py-2.5 focus:bg-white focus:border-accent focus:ring-accent transition-all shadow-sm text-sm";
   const labelClasses = "block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5";
+  const modalInputClasses = "block w-full rounded-xl border-transparent bg-slate-100/70 text-slate-900 px-4 py-3 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all shadow-sm text-sm placeholder:text-slate-400";
+  const modalLabelClasses = "block text-[10px] font-extrabold text-slate-600 uppercase tracking-widest mb-2";
 
   const renderDashboardTask = (task: Task) => (
     <div key={task.id} className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4 hover:shadow-sm transition-shadow group cursor-pointer" onClick={() => navigateTo(ViewState.TASKS)}>
@@ -892,17 +893,77 @@ const App: React.FC = () => {
       </Modal>
 
       {/* Follow-up Add/Edit Modal */}
-      <Modal isOpen={isAddingFollowUp} onClose={handleCloseFollowUpModal} title={editingFollowUp ? "Edit Client Record" : "New Client Record"}>
-        <form onSubmit={(e) => { e.preventDefault(); handleSaveFollowUp(); }} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1"><label className={labelClasses}>Full Name</label><input required type="text" className={inputClasses} value={newFollowUp.clientName} onChange={e => setNewFollowUp({...newFollowUp, clientName: e.target.value})} /></div>
-            <div className="space-y-1"><label className={labelClasses}>Phone Number</label><PhoneInput required value={newFollowUp.mobile || ''} onChange={v => setNewFollowUp({...newFollowUp, mobile: v})} /></div>
+      <Modal 
+        isOpen={isAddingFollowUp} 
+        onClose={handleCloseFollowUpModal} 
+        title={editingFollowUp ? "Edit Client Record" : "New Client Record"}
+        hideCloseButton={true}
+      >
+        <form onSubmit={(e) => { e.preventDefault(); handleSaveFollowUp(); }} className="space-y-5 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
+            <div>
+              <label className={modalLabelClasses}>Full Name</label>
+              <input 
+                required 
+                type="text" 
+                className={modalInputClasses} 
+                value={newFollowUp.clientName || ''} 
+                onChange={e => setNewFollowUp({...newFollowUp, clientName: e.target.value})} 
+                placeholder="e.g., Jane Doe"
+              />
+            </div>
+            <div>
+              <label className={modalLabelClasses}>Phone Number</label>
+              <PhoneInput 
+                required 
+                value={newFollowUp.mobile || ''} 
+                onChange={v => setNewFollowUp({...newFollowUp, mobile: v})} 
+              />
+            </div>
           </div>
-          <div className="space-y-1"><label className={labelClasses}>Email</label><input type="email" className={inputClasses} value={newFollowUp.email || ''} onChange={e => setNewFollowUp({...newFollowUp, email: e.target.value})} /></div>
-          <div className="space-y-1"><label className={labelClasses}>Client Type</label><select className={inputClasses} value={newFollowUp.clientType} onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}>{Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}</select></div>
-          <div className="space-y-1"><label className={labelClasses}>Next Follow-up Date</label><DatePicker value={newFollowUp.nextFollowUpDate || ''} onChange={e => setNewFollowUp({...newFollowUp, nextFollowUpDate: e.target.value})} /></div>
-          <div className="space-y-1"><label className={labelClasses}>Notes</label><textarea className={inputClasses} value={newFollowUp.notes || ''} onChange={e => setNewFollowUp({...newFollowUp, notes: e.target.value})} /></div>
-          <div className="pt-4 flex justify-end gap-3"><Button variant="ghost" type="button" onClick={handleCloseFollowUpModal}>Cancel</Button><Button type="submit">{editingFollowUp ? 'Save Changes' : 'Create'}</Button></div>
+          <div>
+            <label className={modalLabelClasses}>Email</label>
+            <input 
+              type="email" 
+              className={modalInputClasses} 
+              value={newFollowUp.email || ''} 
+              onChange={e => setNewFollowUp({...newFollowUp, email: e.target.value})}
+              placeholder="jane.d@example.com"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
+            <div>
+              <label className={modalLabelClasses}>Client Type</label>
+              <select 
+                className={modalInputClasses} 
+                value={newFollowUp.clientType} 
+                onChange={e => setNewFollowUp({...newFollowUp, clientType: e.target.value as ClientType})}
+              >
+                {Object.values(ClientType).map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={modalLabelClasses}>Next Follow-up Date</label>
+              <DatePicker 
+                className={modalInputClasses}
+                value={newFollowUp.nextFollowUpDate || ''} 
+                onChange={e => setNewFollowUp({...newFollowUp, nextFollowUpDate: e.target.value})} 
+              />
+            </div>
+          </div>
+          <div>
+            <label className={modalLabelClasses}>Notes</label>
+            <textarea 
+              className={`${modalInputClasses} min-h-[90px] resize-none`} 
+              value={newFollowUp.notes || ''} 
+              onChange={e => setNewFollowUp({...newFollowUp, notes: e.target.value})}
+              placeholder="e.g., Discussed new proposal..."
+            />
+          </div>
+          <div className="pt-5 flex justify-end items-center gap-4 border-t border-slate-100 mt-6">
+            <Button variant="ghost" type="button" onClick={handleCloseFollowUpModal}>Cancel</Button>
+            <Button type="submit">{editingFollowUp ? 'Save Changes' : 'Create'}</Button>
+          </div>
         </form>
       </Modal>
     </div>
