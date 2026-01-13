@@ -16,7 +16,7 @@ const HIERARCHY_LEVELS = [
   'World Team',
   'Active World Team',
   'GET',
-  'GET 2000',
+  'GET 2500',
   'Millionaire Team',
   'Millionaire Team 7500',
   'President Team',
