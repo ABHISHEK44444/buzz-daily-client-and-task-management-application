@@ -38,9 +38,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const getItemsForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const dayTasks = tasks.filter(t => t.dueDate === dateStr && t.status !== Status.COMPLETED && t.status !== Status.ARCHIVED);
+    const dayTasks = tasks.filter(t => t.dueDate.split('T')[0] === dateStr && t.status !== Status.COMPLETED && t.status !== Status.ARCHIVED);
     
-    const allDayCalls = followUps.filter(f => f.nextFollowUpDate === dateStr && f.status !== Status.COMPLETED && f.status !== Status.ARCHIVED);
+    const allDayCalls = followUps.filter(f => f.nextFollowUpDate.split('T')[0] === dateStr && f.status !== Status.COMPLETED && f.status !== Status.ARCHIVED);
     const pendingCalls = allDayCalls.filter(c => c.status === Status.PENDING);
     const inProgressCalls = allDayCalls.filter(c => c.status === Status.IN_PROGRESS);
 
@@ -69,45 +69,44 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const { dateStr, tasks: dayTasks, pendingCalls, inProgressCalls, total } = getItemsForDay(day);
       const isToday = dateStr === todayStr;
 
+      const totalCalls = pendingCalls.length + inProgressCalls.length;
+      const totalTasks = dayTasks.length;
+
       let bgClass = "bg-white hover:bg-slate-50";
-      if (total > 0) bgClass = "bg-blue-50/20 hover:bg-blue-50/40";
-      if (isToday) bgClass = "bg-blue-50/50";
+      if (total > 0 && !isToday) bgClass = "bg-green-50 hover:bg-green-100/60";
+      if (isToday) bgClass = "bg-blue-100/50";
 
       cells.push(
         <div 
           key={day} 
           onClick={() => setSelectedDay(dateStr)}
-          className={`min-h-[90px] sm:min-h-[120px] p-1 sm:p-2 border-b border-r border-slate-200 cursor-pointer transition-all flex flex-col items-start relative ${bgClass}`}
+          className={`min-h-[120px] p-2 border-b border-r border-slate-200 cursor-pointer transition-all flex flex-col items-start relative ${bgClass}`}
         >
-          <div className="flex items-center justify-between w-full mb-1 sm:mb-2">
-             <div className={`
-               text-xs sm:text-sm font-black w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full transition-colors shrink-0
-               ${isToday ? 'bg-accent text-white shadow-md shadow-accent/20' : 'text-slate-700'}
-             `}>
-               {day}
-             </div>
+          <div className={`
+            text-sm font-black w-7 h-7 flex items-center justify-center rounded-full transition-colors shrink-0
+            ${isToday ? 'bg-accent text-white shadow-md shadow-accent/20' : 'text-slate-700'}
+          `}>
+            {day}
           </div>
           
-          <div className="flex flex-col items-start w-full gap-1 mt-auto pb-1">
-              {dayTasks.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-purple-700 bg-purple-50 py-0.5 px-1.5 rounded-md border border-purple-100 shadow-sm w-fit" title={`${dayTasks.length} task(s) due`}>
-                      <i className="fa-solid fa-list-check text-[9px]"></i>
-                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{dayTasks.length}</span>
-                  </div>
-              )}
-              {pendingCalls.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-slate-700 bg-slate-100 py-0.5 px-1.5 rounded-md border border-slate-200 shadow-sm w-fit" title={`${pendingCalls.length} pending call(s)`}>
-                      <i className="fa-solid fa-phone text-slate-400 text-[9px]"></i>
-                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{pendingCalls.length}</span>
-                  </div>
-              )}
-              {inProgressCalls.length > 0 && (
-                  <div className="flex items-center gap-1.5 text-orange-700 bg-orange-50 py-0.5 px-1.5 rounded-md border border-orange-100 shadow-sm w-fit" title={`${inProgressCalls.length} in-progress call(s)`}>
-                      <i className="fa-solid fa-phone-volume text-orange-500 text-[9px]"></i>
-                      <span className="text-[10px] sm:text-[11px] font-black leading-none">{inProgressCalls.length}</span>
-                  </div>
-              )}
-          </div>
+          {total > 0 && (
+            <div className="mt-auto w-full space-y-1">
+                {totalCalls > 0 && (
+                    <div className="flex items-center gap-1.5 bg-white rounded-lg p-2 shadow-sm border border-slate-100 w-full">
+                        <i className="fa-solid fa-phone text-accent text-xs"></i>
+                        <span className="text-xs font-bold text-slate-800">{totalCalls}</span>
+                        <span className="text-xs font-medium text-slate-500">Call{totalCalls > 1 ? 's' : ''}</span>
+                    </div>
+                )}
+                {totalTasks > 0 && (
+                    <div className="flex items-center gap-1.5 bg-white rounded-lg p-2 shadow-sm border border-slate-100 w-full">
+                        <i className="fa-solid fa-list-check text-purple-600 text-xs"></i>
+                        <span className="text-xs font-bold text-slate-800">{totalTasks}</span>
+                        <span className="text-xs font-medium text-slate-500">Task{totalTasks > 1 ? 's' : ''}</span>
+                    </div>
+                )}
+            </div>
+          )}
         </div>
       );
     }
@@ -126,8 +125,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const getSelectedDayDetails = () => {
     if (!selectedDay) return { tasks: [], calls: [], dateStr: '' };
-    const dayTasks = tasks.filter(t => t.dueDate === selectedDay && t.status !== Status.COMPLETED);
-    const dayCalls = followUps.filter(f => f.nextFollowUpDate === selectedDay && f.status !== Status.COMPLETED && f.status !== Status.ARCHIVED);
+    const dayTasks = tasks.filter(t => t.dueDate.split('T')[0] === selectedDay && t.status !== Status.COMPLETED);
+    const dayCalls = followUps.filter(f => f.nextFollowUpDate.split('T')[0] === selectedDay && f.status !== Status.COMPLETED && f.status !== Status.ARCHIVED);
     return { tasks: dayTasks, calls: dayCalls, dateStr: selectedDay };
   };
 
@@ -180,48 +179,59 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-400 justify-center px-4">
-          <div className="flex items-center gap-2"><i className="fa-solid fa-list-check text-purple-700"></i> Task Due</div>
-          <div className="flex items-center gap-2"><i className="fa-solid fa-phone text-slate-500"></i> Pending Call</div>
-          <div className="flex items-center gap-2"><i className="fa-solid fa-phone-volume text-orange-500"></i> In-Progress Call</div>
-      </div>
-
-      <Modal isOpen={!!selectedDay && !rescheduleItem} onClose={() => setSelectedDay(null)} title={selectedDay ? new Date(selectedDay).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}>
-          <div className="space-y-6">
+      <Modal isOpen={!!selectedDay && !rescheduleItem} onClose={() => setSelectedDay(null)} title={selectedDay ? new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}>
+          <div className="space-y-4">
+              {/* Scheduled Calls Section */}
               <div>
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                      <span>Scheduled Calls</span>
-                      <span className="bg-blue-50 text-accent px-2 py-0.5 rounded-full">{details.calls.length}</span>
-                  </h4>
-                  <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
-                      {details.calls.length === 0 ? <p className="text-xs text-slate-400 italic">No calls today.</p> : details.calls.map(call => (
-                          <div key={call.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-black">{call.clientName.charAt(0)}</div>
-                                  <span className="text-sm font-bold text-slate-800">{call.clientName}</span>
+                  <div className="flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Scheduled Calls</h4>
+                      <span className={`flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full ${details.calls.length > 0 ? 'bg-blue-100 text-accent' : 'bg-slate-100 text-slate-500'}`}>
+                          {details.calls.length}
+                      </span>
+                  </div>
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
+                      {details.calls.length === 0 
+                          ? <p className="text-sm text-slate-400 italic py-3 text-center">No calls scheduled.</p> 
+                          : details.calls.map(call => (
+                              <div key={call.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50/50">
+                                  <div className="flex items-center gap-3">
+                                      <div className={`w-2 h-2 rounded-full ${call.status === Status.IN_PROGRESS ? 'bg-orange-400' : 'bg-slate-400'}`} title={`Status: ${call.status}`}></div>
+                                      <span className="text-sm font-medium text-slate-800">{call.clientName}</span>
+                                  </div>
+                                  <Button variant="ghost" className="text-xs h-7 px-2.5" onClick={() => setRescheduleItem({ id: call.id, type: 'call', currentTitle: call.clientName })}>
+                                    Reschedule
+                                  </Button>
                               </div>
-                              <Button variant="ghost" className="text-[10px] h-7 px-2" onClick={() => setRescheduleItem({ id: call.id, type: 'call', currentTitle: call.clientName })}>Reschedule</Button>
-                          </div>
-                      ))}
+                          ))
+                      }
                   </div>
               </div>
-              <div className="pt-4 border-t border-slate-100">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                      <span>Tasks Due</span>
-                      <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">{details.tasks.length}</span>
-                  </h4>
-                  <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
-                      {details.tasks.length === 0 ? <p className="text-xs text-slate-400 italic">No tasks today.</p> : details.tasks.map(task => (
-                          <div key={task.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                              <span className="text-sm font-bold text-slate-800 truncate">{task.title}</span>
-                              <Button variant="ghost" className="text-[10px] h-7 px-2" onClick={() => setRescheduleItem({ id: task.id, type: 'task', currentTitle: task.title })}>Reschedule</Button>
-                          </div>
-                      ))}
+
+              {/* Tasks Due Section */}
+              <div>
+                  <div className="flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tasks Due</h4>
+                      <span className={`flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full ${details.tasks.length > 0 ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                          {details.tasks.length}
+                      </span>
+                  </div>
+                  <div className="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar pr-1">
+                      {details.tasks.length === 0 
+                          ? <p className="text-sm text-slate-400 italic py-3 text-center">No tasks due.</p> 
+                          : details.tasks.map(task => (
+                              <div key={task.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50/50">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                     <div className={`w-2 h-2 rounded-full ${task.status === Status.IN_PROGRESS ? 'bg-orange-400' : 'bg-purple-400'}`} title={`Status: ${task.status}`}></div>
+                                     <span className="text-sm font-medium text-slate-800 truncate">{task.title}</span>
+                                  </div>
+                                  <Button variant="ghost" className="text-xs h-7 px-2.5" onClick={() => setRescheduleItem({ id: task.id, type: 'task', currentTitle: task.title })}>
+                                    Reschedule
+                                  </Button>
+                              </div>
+                          ))
+                      }
                   </div>
               </div>
-          </div>
-          <div className="mt-6 flex justify-end">
-              <Button onClick={() => setSelectedDay(null)} className="w-full sm:w-auto">Close</Button>
           </div>
       </Modal>
 
