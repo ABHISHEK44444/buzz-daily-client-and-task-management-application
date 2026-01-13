@@ -26,6 +26,8 @@ const ORG_LEVELS: OrgLevel[] = [
   'CHAIRMAN_CLUB', 'FOUNDER_CIRCLE'
 ];
 
+type SortableFollowUpKeys = 'clientName' | 'clientType' | 'nextFollowUpDate';
+
 const App: React.FC = () => {
   // Authentication & User State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -49,6 +51,8 @@ const App: React.FC = () => {
   const [dbSearch, setDbSearch] = useState('');
   const [dbTypeFilter, setDbTypeFilter] = useState<string>('All');
   const [dbStatusFilter, setDbStatusFilter] = useState<string>('All');
+  const [sortConfig, setSortConfig] = useState<{ key: SortableFollowUpKeys; direction: 'asc' | 'desc' }>({ key: 'clientName', direction: 'asc' });
+
 
   // Modals State
   const [isAddingFollowUp, setIsAddingFollowUp] = useState(false);
@@ -452,14 +456,60 @@ const App: React.FC = () => {
     return followUps.filter(f => f.nextFollowUpDate.split('T')[0] <= today && f.status !== Status.COMPLETED);
   };
 
-  const filteredFollowUps = useMemo(() => {
-    return followUps.filter(f => {
+  const sortedAndFilteredFollowUps = useMemo(() => {
+    let sortableItems = [...followUps].filter(f => {
       const matchesSearch = f.clientName.toLowerCase().includes(dbSearch.toLowerCase());
       const matchesType = dbTypeFilter === 'All' || f.clientType === dbTypeFilter;
       const matchesStatus = dbStatusFilter === 'All' || f.status === dbStatusFilter;
       return matchesSearch && matchesType && matchesStatus;
     });
-  }, [followUps, dbSearch, dbTypeFilter, dbStatusFilter]);
+
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        if (sortConfig.key === 'nextFollowUpDate') {
+            const dateA = new Date(a.nextFollowUpDate).getTime();
+            const dateB = new Date(b.nextFollowUpDate).getTime();
+            if (dateA < dateB) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (dateA > dateB) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        } else {
+            const valA = a[sortConfig.key];
+            const valB = b[sortConfig.key];
+            if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        }
+      });
+    }
+
+    return sortableItems;
+  }, [followUps, dbSearch, dbTypeFilter, dbStatusFilter, sortConfig]);
+
+  const requestSort = (key: SortableFollowUpKeys) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const renderSortableHeader = (label: string, key: SortableFollowUpKeys) => {
+    const isActive = sortConfig.key === key;
+    const icon = isActive 
+        ? (sortConfig.direction === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+        : 'fa-sort';
+    const color = isActive ? 'text-accent' : 'text-slate-300 group-hover:text-slate-500';
+
+    return (
+        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <button onClick={() => requestSort(key)} className="group flex items-center gap-2 focus:outline-none">
+                <span className={`${isActive ? 'text-slate-600' : ''}`}>{label}</span>
+                <i className={`fa-solid ${icon} transition-colors ${color}`}></i>
+            </button>
+        </th>
+    );
+  };
+
 
   const todaysTasksOverview = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -693,17 +743,17 @@ const App: React.FC = () => {
                         <thead className="bg-slate-50/80 border-b border-slate-200">
                            <tr>
                               <th className="px-6 py-4 w-12"><input type="checkbox" className="rounded border-slate-300 text-accent focus:ring-accent" /></th>
-                              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client</th>
+                              {renderSortableHeader('Client', 'clientName')}
                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact</th>
-                              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</th>
+                              {renderSortableHeader('Type', 'clientType')}
                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Next Call</th>
+                              {renderSortableHeader('Next Call', 'nextFollowUpDate')}
                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes</th>
                               <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                           {filteredFollowUps.map(f => (
+                           {sortedAndFilteredFollowUps.map(f => (
                               <tr key={f.id} className="hover:bg-slate-50 transition-colors group">
                                  <td className="px-6 py-5"><input type="checkbox" className="rounded border-slate-300 text-accent focus:ring-accent" /></td>
                                  <td className="px-6 py-5">
@@ -758,7 +808,7 @@ const App: React.FC = () => {
                                  </td>
                               </tr>
                            ))}
-                           {filteredFollowUps.length === 0 && (
+                           {sortedAndFilteredFollowUps.length === 0 && (
                               <tr>
                                  <td colSpan={8} className="px-6 py-20 text-center">
                                     <div className="flex flex-col items-center">
