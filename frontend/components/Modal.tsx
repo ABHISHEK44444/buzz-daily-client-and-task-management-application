@@ -8,9 +8,10 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   hideCloseButton?: boolean;
+  hideFooterOnly?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, hideCloseButton = false }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, hideCloseButton = false, hideFooterOnly = false }) => {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -46,7 +47,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
               </div>
             </div>
           </div>
-          {!hideCloseButton && (
+          {!hideCloseButton && !hideFooterOnly && (
             <div className="bg-slate-50 px-6 py-4 sm:flex sm:flex-row-reverse sm:px-8 border-t border-slate-100">
               <Button
                 onClick={onClose}
