@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { ViewState, Task, FollowUp, Status, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
 import { INITIAL_TASKS, INITIAL_FOLLOW_UPS, INITIAL_ORG_DATA, INITIAL_USER_PROFILE } from './constants';
 import { apiFetch } from './services/api';
@@ -58,6 +59,13 @@ const App: React.FC = () => {
   const [isAddingFollowUp, setIsAddingFollowUp] = useState(false);
   const [editingFollowUp, setEditingFollowUp] = useState<FollowUp | null>(null);
   const [activeDetailModal, setActiveDetailModal] = useState<'clients' | 'calls' | 'tasks' | 'efficiency' | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  
+  // Importer State
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImportingData, setIsImportingData] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
 
   // Org Chart Edit State
   const [isAddingMember, setIsAddingMember] = useState(false);
@@ -450,6 +458,88 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.ACTIVE_USER_EMAIL, user.email);
     navigateTo(ViewState.DASHBOARD);
   };
+  
+    // Import Modal Actions
+  const closeImportModal = () => {
+    setIsImporting(false);
+    setImportFile(null);
+    setImportError(null);
+    setIsImportingData(false);
+  };
+  
+  const handleDownloadTemplate = () => {
+    const sampleData = [{
+      clientName: 'John Doe',
+      mobile: '+15551234567',
+      email: 'john.doe@example.com',
+      clientType: 'Prospect',
+      notes: 'Met at the annual tech conference.',
+    }];
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+    XLSX.writeFile(workbook, "BizTrack_Client_Template.xlsx");
+  };
+  
+  const handleProcessImport = () => {
+    if (!importFile || !currentUser) return;
+  
+    setIsImportingData(true);
+    setImportError(null);
+  
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+  
+        if (json.length === 0) {
+          setImportError("The selected file is empty or has no data.");
+          return;
+        }
+  
+        const firstRow = json[0];
+        if (!firstRow.clientName || !firstRow.mobile) {
+          setImportError("Import failed. Your file must include 'clientName' and 'mobile' columns.");
+          return;
+        }
+  
+        const newFollowUps = json.map(row => {
+          const clientType = Object.values(ClientType).includes(row.clientType) ? row.clientType : ClientType.PROSPECT;
+          
+          return {
+            clientName: String(row.clientName || '').trim(),
+            mobile: String(row.mobile || '').trim(),
+            email: String(row.email || '').trim(),
+            notes: String(row.notes || '').trim(),
+            clientType: clientType,
+            frequency: Frequency.WEEKLY,
+            status: Status.PENDING,
+            nextFollowUpDate: new Date().toISOString(),
+            lastContactDate: new Date().toISOString(),
+          };
+        }).filter(f => f.clientName && f.mobile); // Ensure only valid records are sent
+        
+        await apiFetch('/api/followups/bulk', currentUser.email, {
+          method: 'POST',
+          body: JSON.stringify(newFollowUps),
+        });
+  
+        alert(`${newFollowUps.length} clients imported successfully!`);
+        closeImportModal();
+        await loadData();
+      } catch (err: any) {
+        setImportError(err.message || "An unexpected error occurred during import.");
+      } finally {
+        setIsImportingData(false);
+      }
+    };
+    reader.readAsArrayBuffer(importFile);
+  };
+
 
   const getTodaysCalls = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -674,9 +764,14 @@ const App: React.FC = () => {
             <div className="p-4 sm:p-8 max-w-[1600px] mx-auto space-y-12 animate-fade-in pb-20">
                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">Client Hub</h2>
-                 <Button onClick={() => setIsAddingFollowUp(true)} className="shadow-xl shadow-accent/20">
-                   <i className="fa-solid fa-user-plus mr-3"></i>New Client
-                 </Button>
+                 <div className="flex items-center gap-3">
+                   <Button onClick={() => setIsImporting(true)} variant="secondary" className="shadow-sm">
+                     <i className="fa-solid fa-file-import mr-2"></i>Import
+                   </Button>
+                   <Button onClick={() => setIsAddingFollowUp(true)} className="shadow-xl shadow-accent/20">
+                     <i className="fa-solid fa-user-plus mr-2"></i>New Client
+                   </Button>
+                 </div>
                </div>
 
                {/* Priority Cards Section */}
@@ -939,6 +1034,54 @@ const App: React.FC = () => {
           <div className="space-y-1"><label className={labelClasses}>Business Role</label><input type="text" className={inputClasses} value={memberForm.role} onChange={e => setMemberForm({...memberForm, role: e.target.value})} /></div>
           <div className="space-y-1"><label className={labelClasses}>Level</label><select className={inputClasses} value={memberForm.level} onChange={e => setMemberForm({...memberForm, level: e.target.value as OrgLevel})}>{ORG_LEVELS.map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}</select></div>
           <div className="pt-4 flex justify-end gap-3"><Button variant="ghost" onClick={() => setIsAddingMember(false)}>Cancel</Button><Button onClick={handleSaveMember}>Save</Button></div>
+        </div>
+      </Modal>
+
+      {/* Import Clients Modal */}
+      <Modal isOpen={isImporting} onClose={closeImportModal} title="Import Clients from Excel" hideFooterOnly={true}>
+        <div className="space-y-6">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-600 space-y-3 shadow-inner">
+            <h4 className="font-bold text-slate-900">Instructions:</h4>
+            <ul className="list-decimal list-inside space-y-1.5">
+              <li>Your file must have a header row with the exact column names below.</li>
+              <li><b>Required columns:</b> <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[10px] font-bold">clientName</code>, <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[10px] font-bold">mobile</code>.</li>
+              <li><b>Optional columns:</b> <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[10px] font-bold">email</code>, <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[10px] font-bold">clientType</code>, <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded text-[10px] font-bold">notes</code>.</li>
+              <li>Download the template to ensure correct formatting.</li>
+            </ul>
+            <button onClick={handleDownloadTemplate} className="text-accent font-bold hover:underline mt-2">
+              <i className="fa-solid fa-download mr-2"></i>Download Template
+            </button>
+          </div>
+
+          {importError && (
+             <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg flex items-start gap-2">
+                <i className="fa-solid fa-circle-exclamation mt-0.5"></i>
+                <span>{importError}</span>
+             </div>
+          )}
+
+          <div>
+            <label htmlFor="file-upload" className="w-full flex flex-col items-center justify-center p-6 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
+                <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-3">
+                  <i className="fa-solid fa-file-excel text-xl"></i>
+                </div>
+                <span className="text-sm font-semibold text-slate-700">{importFile ? importFile.name : 'Click to upload a file'}</span>
+                <span className="text-xs text-slate-500">XLSX or XLS format</span>
+            </label>
+            <input id="file-upload" type="file" className="hidden" accept=".xlsx, .xls" onChange={(e) => {
+              if (e.target.files) {
+                setImportFile(e.target.files[0]);
+                setImportError(null);
+              }
+            }}/>
+          </div>
+
+          <div className="pt-4 flex justify-end items-center gap-4 border-t border-slate-100">
+            <Button variant="ghost" type="button" onClick={closeImportModal} disabled={isImportingData}>Cancel</Button>
+            <Button onClick={handleProcessImport} disabled={!importFile || isImportingData} isLoading={isImportingData}>
+              {isImportingData ? 'Processing...' : 'Import Clients'}
+            </Button>
+          </div>
         </div>
       </Modal>
 
