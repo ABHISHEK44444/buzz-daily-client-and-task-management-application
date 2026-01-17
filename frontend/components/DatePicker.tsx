@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface DatePickerProps {
@@ -9,29 +10,50 @@ interface DatePickerProps {
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, className = '', placeholder = 'dd/mm/yyyy', required }) => {
-  const formatDate = (isoDate: string) => {
-    if (!isoDate) return '';
-    const parts = isoDate.split('-');
-    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    return isoDate;
+  
+  // Helper to get only the YYYY-MM-DD part from any valid date string.
+  // The native <input type="date"> requires this specific format.
+  const getISODatePart = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      // Create a date object. This handles various formats including full ISO strings.
+      const date = new Date(dateString);
+      // Adjust for timezone offset to prevent the date from shifting.
+      const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+      // toISOString() converts to UTC, so we add the offset back to get the correct local date.
+      return new Date(date.getTime() - userTimezoneOffset).toISOString().split('T')[0];
+    } catch (error) {
+      console.error("Invalid date value for DatePicker:", dateString);
+      return '';
+    }
+  };
+
+  // Formats a YYYY-MM-DD or full ISO string into DD/MM/YYYY for user-friendly display.
+  const formatDateForDisplay = (isoDate: string) => {
+    const datePart = getISODatePart(isoDate);
+    if (!datePart) return '';
+    const [year, month, day] = datePart.split('-');
+    if (year && month && day) {
+      return `${day}/${month}/${year}`;
+    }
+    return placeholder; // Fallback
   };
 
   const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
-    // Try using the modern showPicker() API
+    // Try using the modern showPicker() API for better UX
     if ('showPicker' in input) {
       try {
         (input as any).showPicker();
       } catch (error) {
-        // Fallback or ignore if blocked
+        // Fallback or ignore if blocked by browser
       }
     }
   };
 
   return (
     <div className="relative w-full">
-      {/* CSS Hack: Expand the WebKit calendar picker indicator to fill the entire input.
-          This ensures clicking anywhere on the input triggers the picker in WebKit browsers. */}
+      {/* CSS Hack to make the entire visible area clickable to trigger the date picker */}
       <style>{`
         .custom-date-input::-webkit-calendar-picker-indicator {
           position: absolute;
@@ -47,16 +69,19 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, classNa
         }
       `}</style>
       
+      {/* This is the visible, styled part of the input */}
       <div className={`flex items-center justify-between ${className} pointer-events-none select-none`}>
         <span className={`truncate ${!value ? 'text-slate-400' : 'text-inherit'}`}>
-          {value ? formatDate(value) : placeholder}
+          {value ? formatDateForDisplay(value) : placeholder}
         </span>
         <i className="fa-regular fa-calendar text-slate-400 flex-shrink-0 ml-2"></i>
       </div>
+
+      {/* This is the actual, hidden date input that provides functionality */}
       <input
         type="date"
         required={required}
-        value={value}
+        value={getISODatePart(value)} // Use the correctly formatted date part
         onChange={onChange}
         onClick={handleClick}
         className="custom-date-input absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
