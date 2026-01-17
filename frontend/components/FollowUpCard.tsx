@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { FollowUp, Status, ClientType } from '../types';
 import { Button } from './Button';
@@ -21,6 +20,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
   const [selectedOutcome, setSelectedOutcome] = useState<CallOutcome>(null);
   const [outcomeDate, setOutcomeDate] = useState('');
   const [outcomeNotes, setOutcomeNotes] = useState('');
+  const [newClientType, setNewClientType] = useState<ClientType>(ClientType.USER);
 
   const formatDisplayDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -60,14 +60,15 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
         break;
       case 'SALE':
         defaultDate.setMonth(today.getMonth() + 1);
-        setOutcomeNotes(`Success! Sale closed with ${followUp.clientName}.`);
+        setOutcomeNotes(`Success! Sale closed with ${followUp.clientName}. Ready for onboarding.`);
+        setNewClientType(ClientType.USER); // Default to User on sale
         break;
       case 'WRONG':
         setOutcomeNotes(`Marked as wrong number for ${followUp.clientName}.`);
         break;
     }
     setOutcomeDate(defaultDate.toISOString().split('T')[0]);
-  }, [selectedOutcome]);
+  }, [selectedOutcome, followUp.clientName]);
 
   const handleConfirmOutcome = () => {
     if (!selectedOutcome) return;
@@ -75,7 +76,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
     let changes: { status?: Status, clientType?: ClientType } = {};
 
     if (selectedOutcome === 'SALE') {
-      changes.clientType = ClientType.USER;
+      changes.clientType = newClientType;
     } else if (selectedOutcome === 'WRONG') {
       changes.status = Status.ARCHIVED;
     }
@@ -83,6 +84,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
     onCompleteCycle(followUp.id, outcomeDate, outcomeNotes, changes);
     setShowCompleteModal(false);
     setSelectedOutcome(null);
+    setNewClientType(ClientType.USER);
   };
 
   const OutcomeOption = ({ id, icon, label, sub, activeColor }: { id: CallOutcome, icon: string, label: string, sub: string, activeColor: string }) => {
@@ -192,7 +194,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
         </div>
       </div>
 
-      <Modal isOpen={showCompleteModal} onClose={() => setShowCompleteModal(false)} title="How did the call go?">
+      <Modal isOpen={showCompleteModal} onClose={() => setShowCompleteModal(false)} title="How did the call go?" hideCloseButton={true}>
         <div className="space-y-6 pt-2">
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <OutcomeOption 
@@ -227,9 +229,24 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
 
            {selectedOutcome && selectedOutcome !== 'WRONG' && (
              <div className="space-y-6 animate-fade-in pt-4 border-t border-slate-100">
+                {selectedOutcome === 'SALE' && (
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">CHANGE CLIENT TYPE TO</label>
+                    <select
+                        value={newClientType}
+                        onChange={(e) => setNewClientType(e.target.value as ClientType)}
+                        className="w-full bg-white border border-slate-300 rounded-lg px-4 py-3 text-sm text-slate-800 focus:ring-accent focus:border-accent outline-none transition-all shadow-sm"
+                    >
+                        {Object.values(ClientType).filter(t => t !== ClientType.PROSPECT).map(type => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+                
                 <div>
                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Next Follow Up Date</label>
-                   <div className="bg-[#fffef5] rounded-xl border border-slate-200 overflow-hidden shadow-inner">
+                   <div className="bg-slate-50/70 rounded-xl border border-slate-200 overflow-hidden shadow-inner">
                       <DatePicker value={outcomeDate} onChange={(e) => setOutcomeDate(e.target.value)} className="px-4 py-3 bg-transparent border-none text-slate-800 font-bold" />
                    </div>
                 </div>
@@ -243,8 +260,8 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
                       <textarea 
                         value={outcomeNotes}
                         onChange={(e) => setOutcomeNotes(e.target.value)}
-                        placeholder="Discussed X, need to follow up on Y..."
-                        className="w-full bg-[#fffef5] border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm text-slate-700 min-h-[120px] focus:ring-2 focus:ring-accent focus:border-accent outline-none transition-all resize-none shadow-inner"
+                        placeholder={selectedOutcome === 'SALE' ? "Onboarding details..." : "Discussed X, need to follow up on Y..."}
+                        className="w-full bg-slate-50/70 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm text-slate-700 min-h-[120px] focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none transition-all resize-none shadow-inner"
                       />
                    </div>
                 </div>
