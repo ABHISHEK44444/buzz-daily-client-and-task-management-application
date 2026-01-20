@@ -170,7 +170,7 @@ export const FollowUpCard: React.FC<FollowUpCardProps> = ({ followUp, onStatusCh
         </div>
 
         <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl text-xs text-slate-500 leading-relaxed italic mb-6 shadow-inner">
-          "{followUp.notes || 'done'}"
+          "{followUp.notes || 'No notes provided.'}"
         </div>
 
         <div className="mt-auto flex items-center justify-between pt-6 border-t border-slate-100">
