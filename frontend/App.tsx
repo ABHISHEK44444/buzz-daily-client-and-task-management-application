@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { ViewState, Task, FollowUp, Status, ClientType, Frequency, OrgNode, OrgLevel, UserProfile } from './types';
@@ -14,6 +13,8 @@ import { Modal } from './components/Modal';
 import { DatePicker } from './components/DatePicker';
 import { LoginPage } from './components/LoginPage';
 import { PhoneInput } from './components/PhoneInput';
+import { AIAssistant } from './components/AIAssistant';
+import { generateAIResponse } from './services/geminiService';
 
 const STORAGE_KEYS = {
   AUTH_TOKEN: 'biztrack_token',
@@ -60,6 +61,8 @@ const App: React.FC = () => {
   const [editingFollowUp, setEditingFollowUp] = useState<FollowUp | null>(null);
   const [activeDetailModal, setActiveDetailModal] = useState<'clients' | 'calls' | 'tasks' | 'efficiency' | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isDraftingEmail, setIsDraftingEmail] = useState(false);
   
   // Importer State
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -207,11 +210,23 @@ const App: React.FC = () => {
     if (!currentUser || !orgData) return;
 
     setIsLoading(true);
+
+    // Create an explicit, clean payload of fields that are editable on the profile page.
+    // This is a robust way to prevent stale or unintended data from being sent.
+    const updatePayload = {
+      name: updatedProfile.name,
+      role: updatedProfile.role,
+      phone: updatedProfile.phone,
+      agendaReminderTime: updatedProfile.agendaReminderTime,
+      avatarUrl: updatedProfile.avatarUrl,
+      bio: updatedProfile.bio,
+    };
+
     try {
-      // API call to update the user profile
+      // API call to update the user profile with the specific payload
       await apiFetch('/api/user', currentUser.email, {
         method: 'PATCH',
-        body: JSON.stringify(updatedProfile),
+        body: JSON.stringify(updatePayload),
       });
 
       // API call to update the corresponding root org member
@@ -395,6 +410,23 @@ const App: React.FC = () => {
       await handleAddFollowUp();
     }
     handleCloseFollowUpModal();
+  };
+
+  const handleGenerateEmailDraft = async () => {
+    if (!newFollowUp.clientName) {
+      alert("Please enter a client name first to generate a draft.");
+      return;
+    }
+    setIsDraftingEmail(true);
+    try {
+      const prompt = `Draft a professional and friendly follow-up email to my client, ${newFollowUp.clientName}. My previous notes are: "${newFollowUp.notes || 'No previous notes.'}". Keep it concise and end with a clear call to action. Sign it as "${currentUser?.name || 'The Team'}". Include a subject line at the top.`;
+      const draft = await generateAIResponse(prompt);
+      setNewFollowUp(prev => ({ ...prev, notes: draft }));
+    } catch (err) {
+      alert("Failed to generate email draft. Please check your API key configuration.");
+    } finally {
+      setIsDraftingEmail(false);
+    }
   };
 
   // Org Chart Actions
@@ -1145,7 +1177,19 @@ const App: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className={modalLabelClasses}>Notes</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className={modalLabelClasses}>Notes</label>
+              <Button 
+                  type="button" 
+                  variant="ghost" 
+                  className="text-xs h-7 px-2 text-accent hover:bg-blue-50"
+                  onClick={handleGenerateEmailDraft}
+                  isLoading={isDraftingEmail}
+                  disabled={isDraftingEmail}
+              >
+                {isDraftingEmail ? 'Drafting...' : '✨ AI Draft'}
+              </Button>
+            </div>
             <textarea 
               className={`${modalInputClasses} min-h-[90px] resize-none`} 
               value={newFollowUp.notes || ''} 
@@ -1158,6 +1202,19 @@ const App: React.FC = () => {
             <Button type="submit">{editingFollowUp ? 'Save Changes' : 'Create'}</Button>
           </div>
         </form>
+      </Modal>
+      
+      <button
+        onClick={() => setIsAIAssistantOpen(true)}
+        className="fixed bottom-8 right-8 w-16 h-16 bg-primary rounded-full text-white flex items-center justify-center shadow-2xl shadow-slate-900/20 hover:bg-accent transition-all transform hover:scale-110 active:scale-95 z-40 ring-4 ring-white/50"
+        title="Open AI Assistant"
+        aria-label="Open AI Assistant"
+      >
+        <i className="fa-solid fa-wand-magic-sparkles text-2xl"></i>
+      </button>
+
+      <Modal isOpen={isAIAssistantOpen} onClose={() => setIsAIAssistantOpen(false)} title="AI Assistant" hideFooterOnly={true}>
+        <AIAssistant tasks={tasks} followUps={followUps} />
       </Modal>
     </div>
   );
