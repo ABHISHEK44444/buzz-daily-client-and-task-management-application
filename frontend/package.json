@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-copy-of-biztrack---business-follow-up-&-task-manager",
+  "name": "copy-of-copy-of-copy-of-biztrack---business-follow-up-&-task-managerabhihek-workinhg-deploye2",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,14 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
     "@google/genai": "^1.34.0",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "mongoose": "^9.1.1",
-    "cors": "^2.8.5",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
