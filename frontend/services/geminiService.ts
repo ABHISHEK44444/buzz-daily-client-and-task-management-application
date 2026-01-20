@@ -1,13 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
 import { FollowUp, Task } from "../types";
 
+const GEMINI_API_KEY = import.meta.env.VITE_API_KEY;
+
 // This is a more generic function that can be used for various AI tasks.
 export const generateAIResponse = async (
   prompt: string,
   context?: { tasks?: Task[]; followUps?: FollowUp[] }
 ): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    if (!GEMINI_API_KEY) {
+      // This error will be caught and handled gracefully below.
+      throw new Error("API key not valid. Please check your environment configuration.");
+    }
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
     // Construct a more detailed context for the AI
     let fullPrompt = `You are a helpful business assistant for an app called BizTrack.\n`;
@@ -36,7 +42,7 @@ export const generateAIResponse = async (
   } catch (error) {
     console.error("Error generating AI response:", error);
     if (error instanceof Error && (error.message.includes('API key not valid') || error.message.includes('API_KEY_INVALID'))) {
-      return "Could not connect to the AI service. Please ensure your API key is correctly configured in the application environment and try again.";
+      return "Could not connect to the AI service. Please ensure your VITE_API_KEY is correctly configured in your application environment and try again.";
     }
     return "An error occurred while generating the AI response.";
   }
