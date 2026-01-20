@@ -1,58 +1,43 @@
-
-
-
-
 import { GoogleGenAI } from "@google/genai";
-import { FollowUp } from "../types";
+import { FollowUp, Task } from "../types";
 
-export const generateFollowUpEmail = async (followUp: FollowUp): Promise<string> => {
+// This is a more generic function that can be used for various AI tasks.
+export const generateAIResponse = async (
+  prompt: string,
+  context?: { tasks?: Task[]; followUps?: FollowUp[] }
+): Promise<string> => {
   try {
-    // FIX: Adhere to Gemini API guidelines by using process.env.API_KEY and removing the manual key check.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const prompt = `
-      You are a professional business assistant.
-      Draft a polite and concise follow-up email to a client based on the following details:
-      
-      Client Name: ${followUp.clientName}
-      Last Contact Date: ${followUp.lastContactDate}
-      Context/Notes: ${followUp.notes}
-      
-      The email should be professional, warm, and encourage a response.
-      Subject line should be included.
-      Do not include placeholders like "[Your Name]" - sign it as "The Team".
-    `;
+
+    // Construct a more detailed context for the AI
+    let fullPrompt = `You are a helpful business assistant for an app called BizTrack.\n`;
+    if (context?.tasks && context.tasks.length > 0) {
+      fullPrompt += `Here are the user's current tasks:\n${JSON.stringify(
+        context.tasks.map(({ id, ...task }) => task),
+        null,
+        2
+      )}\n\n`;
+    }
+    if (context?.followUps && context.followUps.length > 0) {
+      fullPrompt += `Here are the user's current client follow-ups:\n${JSON.stringify(
+        context.followUps.map(({ id, ...followUp }) => followUp),
+        null,
+        2
+      )}\n\n`;
+    }
+    fullPrompt += `Based on the context above, please respond to the following request. Format your response clearly, using markdown for lists, bolding, etc.\n\nUser Request: "${prompt}"`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: fullPrompt,
     });
 
-    return response.text || "Unable to generate email draft.";
+    return response.text || "Unable to generate a response.";
   } catch (error) {
-    console.error("Error generating email:", error);
-    return "Error generating email.";
+    console.error("Error generating AI response:", error);
+    if (error instanceof Error && (error.message.includes('API key not valid') || error.message.includes('API_KEY_INVALID'))) {
+      return "Could not connect to the AI service. Please ensure your API key is correctly configured in the application environment and try again.";
+    }
+    return "An error occurred while generating the AI response.";
   }
 };
-
-export const suggestPriorities = async (tasks: string[]): Promise<string> => {
-  try {
-    // FIX: Adhere to Gemini API guidelines by using process.env.API_KEY and removing the manual key check.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const prompt = `
-    I have the following tasks. Please analyze them and suggest a priority order (High to Low) with a brief 1-sentence reason for the top task.
-    Tasks: ${JSON.stringify(tasks)}
-    `;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-    });
-
-    return response.text || "Unable to analyze tasks.";
-  } catch (error) {
-    console.error("Error analyzing tasks:", error);
-    return "Error analyzing tasks.";
-  }
-}
