@@ -8,6 +8,44 @@ interface AIAssistantProps {
   followUps: FollowUp[];
 }
 
+// A simple component to render markdown-like text (**bold** and * lists) as HTML.
+const MarkdownRenderer = ({ text }: { text: string }) => {
+    const lines = text.split('\n');
+    // FIX: Replaced JSX.Element with React.ReactNode to resolve "Cannot find namespace 'JSX'" error.
+    const elements: React.ReactNode[] = [];
+    let listItems: React.ReactNode[] = [];
+
+    const processLine = (line: string) => {
+        // Process **bold** text
+        return line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    };
+
+    lines.forEach((line, index) => {
+        if (line.trim().startsWith('* ')) {
+            // This line is a list item
+            const content = line.trim().substring(2);
+            listItems.push(<li key={index} dangerouslySetInnerHTML={{ __html: processLine(content) }} />);
+        } else {
+            // This line is not a list item. If a list was being built, finalize it.
+            if (listItems.length > 0) {
+                elements.push(<ul key={`ul-${index - 1}`} className="list-disc list-inside space-y-2 my-3 pl-4">{listItems}</ul>);
+                listItems = []; // Reset for the next list
+            }
+            // Add the current line as a paragraph if it's not empty.
+            if (line.trim()) {
+                elements.push(<p key={index} dangerouslySetInnerHTML={{ __html: processLine(line) }} />);
+            }
+        }
+    });
+
+    // If the text ends with a list, ensure it's added to the elements.
+    if (listItems.length > 0) {
+        elements.push(<ul key="ul-end" className="list-disc list-inside space-y-2 my-3 pl-4">{listItems}</ul>);
+    }
+
+    return <>{elements}</>;
+};
+
 export const AIAssistant: React.FC<AIAssistantProps> = ({ tasks, followUps }) => {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
@@ -43,8 +81,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ tasks, followUps }) =>
     <div className="flex flex-col h-[70vh] max-h-[700px]">
       <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
         {response && (
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl whitespace-pre-wrap font-sans animate-fade-in text-sm text-slate-800 leading-relaxed">
-            {response}
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl font-sans animate-fade-in text-sm text-slate-800 leading-relaxed space-y-3">
+            <MarkdownRenderer text={response} />
           </div>
         )}
         {isLoading && (
